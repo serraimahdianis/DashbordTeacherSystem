@@ -10,6 +10,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip } from "recharts";
+import { QRCodeCanvas } from "qrcode.react";
 import {
   ArrowLeft,
   Square,
@@ -21,6 +22,7 @@ import {
   CreditCard,
   CheckCircle2,
   XCircle,
+  QrCode,
 } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { usePolling, useApi, studentsApi, attendanceApi, sessionsApi } from "@/lib/api";
@@ -48,6 +50,7 @@ export default function LiveSessionPage() {
   const [scanLoading, setScanLoading] = useState(false);
   const [scanMsg, setScanMsg] = useState<{ text: string; ok: boolean } | null>(null);
   const [endingSession, setEndingSession] = useState(false);
+  const [showQr, setShowQr] = useState(false);
 
   // Elapsed timer
   useEffect(() => {
@@ -318,6 +321,50 @@ export default function LiveSessionPage() {
 
         {/* Right sidebar */}
         <div className="space-y-6">
+          {/* QR Attendance */}
+          <Card className="border-gray-200 shadow-sm overflow-hidden">
+            <CardHeader className="pb-2 pt-5">
+              <CardTitle className="text-base font-bold text-gray-900">{t.live.qrAttendance}</CardTitle>
+            </CardHeader>
+            <CardContent className="flex flex-col items-center pb-6">
+              {!showQr ? (
+                <div className="flex flex-col items-center py-4">
+                  <div className="h-20 w-20 rounded-2xl bg-violet-50 flex items-center justify-center text-violet-600 mb-4 border border-violet-100">
+                    <QrCode className="h-10 w-10" />
+                  </div>
+                  <Button 
+                    onClick={() => setShowQr(true)}
+                    className="bg-violet-600 hover:bg-violet-700 gap-2"
+                  >
+                    <QrCode className="h-4 w-4" />
+                    {t.live.showQr}
+                  </Button>
+                </div>
+              ) : (
+                <div className="flex flex-col items-center w-full">
+                  <div className="p-4 bg-white rounded-xl shadow-inner border border-gray-100 mb-4">
+                    <QRCodeCanvas
+                      value={sessionId ?? ""}
+                      size={180}
+                      level="H"
+                      includeMargin={false}
+                    />
+                  </div>
+                  <p className="text-xs text-center text-gray-500 mb-4 px-4">
+                    {t.live.qrInstructions}
+                  </p>
+                  <Button 
+                    variant="outline"
+                    onClick={() => setShowQr(false)}
+                    className="w-full text-xs h-8"
+                  >
+                    {t.live.hideQr}
+                  </Button>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
           {/* RFID Scanner */}
           <Card className="border-gray-200 shadow-sm overflow-hidden">
             <CardHeader className="flex flex-row items-center justify-between pb-0 pt-5">

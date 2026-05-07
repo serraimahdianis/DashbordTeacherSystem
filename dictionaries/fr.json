@@ -109,7 +109,11 @@
     "attendanceSummary": "Résumé des présences",
     "elapsed": "Temps écoulé",
     "rfidInput": "Saisir le code RFID...",
-    "recordScan": "Enregistrer"
+    "recordScan": "Enregistrer",
+    "qrAttendance": "Présence par QR Code",
+    "showQr": "Afficher le QR Code",
+    "hideQr": "Masquer le QR Code",
+    "qrInstructions": "Les étudiants scannent ce code avec leur application pour enregistrer leur présence instantanément."
   },
   "schedule": {
     "title": "Emploi du temps",

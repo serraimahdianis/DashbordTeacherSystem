@@ -109,7 +109,11 @@
     "attendanceSummary": "ملخص الحضور",
     "elapsed": "الوقت المنقضي",
     "rfidInput": "أدخل رمز RFID...",
-    "recordScan": "تسجيل"
+    "recordScan": "تسجيل",
+    "qrAttendance": "حضور عبر رمز QR",
+    "showQr": "عرض رمز QR",
+    "hideQr": "إخفاء رمز QR",
+    "qrInstructions": "يمسح الطلاب هذا الرمز باستخدام تطبيقهم لتسجيل الحضور فوراً."
   },
   "schedule": {
     "title": "جدول المواعيد",

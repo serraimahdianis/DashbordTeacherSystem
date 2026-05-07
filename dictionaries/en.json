@@ -109,7 +109,11 @@
     "attendanceSummary": "Attendance Summary",
     "elapsed": "Elapsed",
     "rfidInput": "Enter RFID code...",
-    "recordScan": "Record"
+    "recordScan": "Record",
+    "qrAttendance": "QR Code Attendance",
+    "showQr": "Show QR Code",
+    "hideQr": "Hide QR Code",
+    "qrInstructions": "Students scan this code with their app to record attendance instantly."
   },
   "schedule": {
     "title": "Schedule",
