@@ -1,31 +1,35 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from "@/components/ui/sheet";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { CalendarDays, Play, Eye, CheckCircle2, ChevronLeft, ChevronRight, Plus, Loader2 } from "lucide-react";
+import { CalendarDays, Play, Eye, CheckCircle2, ChevronLeft, ChevronRight, Plus, Loader2, RotateCcw, Ban, Clock } from "lucide-react";
 import { format, parseISO } from "date-fns";
-import { useApi, sessionsApi } from "@/lib/api";
+import { useApi, sessionsApi, modulesApi } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { useTranslation } from "@/lib/locale-context";
 import type { Session, Module } from "@/types/api";
 import { getModuleName } from "@/types/api";
 import { useSWRConfig } from "swr";
 
+type SessionTab = "upcoming" | "completed" | "canceled";
+
 export default function SessionsPage() {
   const { user } = useAuth();
   const { t } = useTranslation();
+  const router = useRouter();
   const { mutate } = useSWRConfig();
   const swrKey = user?.id ? `/sessions/teacher/${user.id}` : null;
   const { data: sessions, isLoading } = useApi<Session[]>(swrKey);
   const { data: modules } = useApi<Module[]>(user?.id ? `/modules/teacher/${user.id}` : null);
 
-  const [activeTab, setActiveTab] = useState<"upcoming" | "completed">("upcoming");
+  const [activeTab, setActiveTab] = useState<SessionTab>("upcoming");
   const [moduleFilter, setModuleFilter] = useState(t.sessions.allModules);
   
   const [sheetOpen, setSheetOpen] = useState(false);
@@ -43,11 +47,11 @@ export default function SessionsPage() {
     setModuleFormError(null);
     setModuleSaving(true);
     try {
-      await import("@/lib/api").then((m) => m.modulesApi.create({
+      await modulesApi.create({
         name: moduleForm.name,
-        year: moduleForm.year,
+        year: moduleForm.year as "L1" | "L2" | "L3" | "M1" | "M2",
         teacherId: user.id,
-      }));
+      });
       await mutate(user?.id ? `/modules/teacher/${user.id}` : null);
       setModuleSheetOpen(false);
       setModuleForm({ name: "", year: "" });
@@ -81,7 +85,7 @@ export default function SessionsPage() {
         date: form.date,
         startTime: form.startTime,
         endTime: form.endTime,
-        type: form.type,
+        type: form.type as "cours" | "td" | "tp",
         group: form.group || null,
         status: "planned",
         isReplacement: true,
@@ -98,17 +102,38 @@ export default function SessionsPage() {
     }
   };
 
-  const allSessions = sessions ?? [];
+  const allSessions = useMemo(() => sessions ?? [], [sessions]);
 
-  const upcomingSessions = allSessions
-    .filter((s) => s.status === "planned" || s.status === "active")
-    .sort((a, b) => a.date.localeCompare(b.date));
+  const upcomingSessions = useMemo(
+    () =>
+      allSessions
+        .filter((s) => s.status === "planned" || s.status === "active")
+        .sort((a, b) => a.date.localeCompare(b.date)),
+    [allSessions]
+  );
 
-  const completedSessions = allSessions
-    .filter((s) => s.status === "closed")
-    .sort((a, b) => b.date.localeCompare(a.date));
+  const completedSessions = useMemo(
+    () =>
+      allSessions
+        .filter((s) => s.status === "closed")
+        .sort((a, b) => b.date.localeCompare(a.date)),
+    [allSessions]
+  );
 
-  const displayedSessions = activeTab === "upcoming" ? upcomingSessions : completedSessions;
+  const canceledSessions = useMemo(
+    () =>
+      allSessions
+        .filter((s) => s.status === "canceled")
+        .sort((a, b) => b.date.localeCompare(a.date)),
+    [allSessions]
+  );
+
+  const displayedSessions =
+    activeTab === "upcoming"
+      ? upcomingSessions
+      : activeTab === "completed"
+      ? completedSessions
+      : canceledSessions;
 
   const moduleNames = [t.sessions.allModules, ...new Set(allSessions.map((s) => getModuleName(s.moduleId)))];
 
@@ -128,8 +153,44 @@ export default function SessionsPage() {
       return <Badge variant="outline" className="bg-emerald-50 text-emerald-600 border-transparent font-medium">{t.sessions.inProgress}</Badge>;
     if (status === "planned")
       return <Badge variant="outline" className="bg-amber-50 text-amber-600 border-transparent font-medium">{t.sessions.planned}</Badge>;
+    if (status === "canceled")
+      return <Badge variant="outline" className="bg-red-50 text-red-600 border-transparent font-medium line-through">{t.sessions.canceled}</Badge>;
     return <Badge variant="outline" className="bg-gray-50 text-gray-600 border-transparent font-medium">{t.sessions.closed}</Badge>;
   };
+
+  const getTabConfig = (tab: SessionTab) => {
+    switch (tab) {
+      case "upcoming":
+        return {
+          icon: <CalendarDays className="h-5 w-5 text-violet-600" />,
+          title: t.sessions.upcoming,
+          borderColor: "border-l-violet-600",
+          titleColor: "text-violet-700",
+          countBg: "bg-violet-100 text-violet-700",
+          emptyMessage: t.sessions.noUpcoming,
+        };
+      case "completed":
+        return {
+          icon: <CheckCircle2 className="h-5 w-5 text-emerald-500" />,
+          title: t.sessions.completed,
+          borderColor: "border-l-emerald-500",
+          titleColor: "text-emerald-600",
+          countBg: "bg-emerald-100 text-emerald-600",
+          emptyMessage: t.sessions.noCompleted,
+        };
+      case "canceled":
+        return {
+          icon: <Ban className="h-5 w-5 text-red-500" />,
+          title: t.sessions.canceled,
+          borderColor: "border-l-red-400",
+          titleColor: "text-red-600",
+          countBg: "bg-red-100 text-red-600",
+          emptyMessage: t.sessions.noCanceled,
+        };
+    }
+  };
+
+  const tabConfig = getTabConfig(activeTab);
 
   return (
     <div className="flex flex-col space-y-6 max-w-[1400px] mx-auto">
@@ -140,6 +201,15 @@ export default function SessionsPage() {
         </div>
 
         <div className="flex gap-3">
+          <Button
+            variant="outline"
+            className="text-gray-500 border-gray-200 hover:bg-gray-50 h-10 px-3"
+            onClick={() => mutate(swrKey)}
+            title="Refresh sessions"
+          >
+            <RotateCcw className="h-4 w-4" />
+          </Button>
+
           <Sheet open={moduleSheetOpen} onOpenChange={setModuleSheetOpen}>
             <SheetTrigger asChild>
               <Button variant="outline" className="text-violet-600 border-violet-200 hover:bg-violet-50 shadow-sm font-medium h-10 px-4 gap-2">
@@ -305,11 +375,7 @@ export default function SessionsPage() {
                   className="bg-violet-600 hover:bg-violet-700 text-white font-medium"
                   disabled={saving}
                 >
-                  {saving ? (
-                    <><Loader2 className="h-4 w-4 animate-spin mr-2" />{t.common.loading}</>
-                  ) : (
-                    "Save Session"
-                  )}
+                  {saving ? <><Loader2 className="h-4 w-4 animate-spin mr-2" />{t.common.loading}</> : t.common.save}
                 </Button>
               </div>
             </form>
@@ -318,6 +384,7 @@ export default function SessionsPage() {
         </div>
       </div>
 
+      {/* Tab Navigation */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-gray-200 pb-px">
         <div className="flex gap-8">
           <button
@@ -335,12 +402,23 @@ export default function SessionsPage() {
             onClick={() => setActiveTab("completed")}
             className={`flex items-center gap-2 pb-3 border-b-2 text-sm transition-colors ${
               activeTab === "completed"
-                ? "border-violet-600 text-violet-700 font-bold"
+                ? "border-emerald-500 text-emerald-600 font-bold"
                 : "border-transparent text-gray-500 font-medium hover:text-gray-700"
             }`}
           >
             <CheckCircle2 className="h-4 w-4" />
             {t.sessions.completed} ({completedSessions.length})
+          </button>
+          <button
+            onClick={() => setActiveTab("canceled")}
+            className={`flex items-center gap-2 pb-3 border-b-2 text-sm transition-colors ${
+              activeTab === "canceled"
+                ? "border-red-400 text-red-600 font-bold"
+                : "border-transparent text-gray-500 font-medium hover:text-gray-700"
+            }`}
+          >
+            <Ban className="h-4 w-4" />
+            {t.sessions.canceled} ({canceledSessions.length})
           </button>
         </div>
         <div className="mb-2">
@@ -356,21 +434,13 @@ export default function SessionsPage() {
         </div>
       </div>
 
+      {/* Session Table */}
       <div className="flex flex-col gap-6">
-        <div className={`bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden ${activeTab === "upcoming" ? "border-l-4 border-l-violet-600" : "border-l-4 border-l-emerald-500"}`}>
-          <div className={`p-5 border-b border-gray-100 flex items-center gap-3`}>
-            {activeTab === "upcoming" ? (
-              <>
-                <CalendarDays className="h-5 w-5 text-violet-600" />
-                <h2 className="text-lg font-bold text-violet-700">{t.sessions.upcoming}</h2>
-              </>
-            ) : (
-              <>
-                <CheckCircle2 className="h-5 w-5 text-emerald-500" />
-                <h2 className="text-lg font-bold text-emerald-600">{t.sessions.completed}</h2>
-              </>
-            )}
-            <div className={`font-bold text-xs h-5 w-5 rounded-full flex items-center justify-center ${activeTab === "upcoming" ? "bg-violet-100 text-violet-700" : "bg-emerald-100 text-emerald-600"}`}>
+        <div className={`bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden border-l-4 ${tabConfig.borderColor}`}>
+          <div className="p-5 border-b border-gray-100 flex items-center gap-3">
+            {tabConfig.icon}
+            <h2 className={`text-lg font-bold ${tabConfig.titleColor}`}>{tabConfig.title}</h2>
+            <div className={`font-bold text-xs h-5 w-5 rounded-full flex items-center justify-center ${tabConfig.countBg}`}>
               {filteredSessions.length}
             </div>
           </div>
@@ -399,13 +469,16 @@ export default function SessionsPage() {
                   {filteredSessions.length === 0 && (
                     <TableRow>
                       <TableCell colSpan={7} className="text-center text-gray-500 py-8">
-                        {activeTab === "upcoming" ? t.sessions.noUpcoming : t.sessions.noCompleted}
+                        {tabConfig.emptyMessage}
                       </TableCell>
                     </TableRow>
                   )}
                   {filteredSessions.map((session) => (
-                    <TableRow key={session._id} className="border-b border-gray-100 hover:bg-gray-50/50">
-                      <TableCell className="font-semibold text-gray-900 py-4">
+                    <TableRow
+                      key={session._id}
+                      className={`border-b border-gray-100 hover:bg-gray-50/50 ${session.status === "canceled" ? "opacity-60" : ""}`}
+                    >
+                      <TableCell className={`font-semibold py-4 ${session.status === "canceled" ? "text-gray-400 line-through" : "text-gray-900"}`}>
                         {getModuleName(session.moduleId)}
                       </TableCell>
                       <TableCell>
@@ -442,7 +515,8 @@ export default function SessionsPage() {
                             onClick={async () => {
                               try {
                                 await sessionsApi.updateStatus(session._id, "active");
-                                window.location.href = `/sessions/${session._id}/live`;
+                                await mutate(swrKey);
+                                router.push(`/sessions/${session._id}/live`);
                               } catch (e) {
                                 console.error(e);
                               }
@@ -451,6 +525,11 @@ export default function SessionsPage() {
                             <Play className="h-3 w-3 fill-current" />
                             {t.sessions.start}
                           </Button>
+                        ) : session.status === "canceled" ? (
+                          <span className="text-xs text-gray-400 italic flex items-center gap-1">
+                            <Clock className="h-3 w-3" />
+                            Missed
+                          </span>
                         ) : (
                           <Link href={`/sessions/${session._id}/live`}>
                             <Button variant="outline" className="text-violet-600 border-violet-200 hover:bg-violet-50 font-medium h-8 px-3 gap-1.5 text-xs">

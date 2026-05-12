@@ -84,6 +84,8 @@
     "inProgress": "Active",
     "planned": "Planifiée",
     "closed": "Terminée",
+    "canceled": "Annulée",
+    "noCanceled": "Aucune séance annulée",
     "exportReport": "Exporter le rapport"
   },
   "live": {

@@ -84,6 +84,8 @@
     "inProgress": "نشطة",
     "planned": "مجدولة",
     "closed": "مغلقة",
+    "canceled": "ملغاة",
+    "noCanceled": "لا توجد جلسات ملغاة",
     "exportReport": "تصدير التقرير"
   },
   "live": {

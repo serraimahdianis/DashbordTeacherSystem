@@ -6,10 +6,11 @@ import { CheckCircle2, XCircle, Clock, CalendarDays } from "lucide-react";
 import { useApi } from "@/lib/api";
 import { useTranslation } from "@/lib/locale-context";
 import { isToday, parseISO } from "date-fns";
-import type { Session, AttendanceRecord } from "@/types/api";
+import type { Session, AttendanceRecord, Schedule } from "@/types/api";
 
 interface StatsCardsProps {
   sessions: Session[];
+  schedules: Schedule[];
 }
 
 function StatCard({
@@ -44,7 +45,7 @@ function StatCard({
   );
 }
 
-export function StatsCards({ sessions }: StatsCardsProps) {
+export function StatsCards({ sessions, schedules }: StatsCardsProps) {
   const { t } = useTranslation();
 
   const todaySessions = useMemo(
@@ -52,23 +53,51 @@ export function StatsCards({ sessions }: StatsCardsProps) {
     [sessions]
   );
 
-  const activeSession = todaySessions.find((s) => s.status === "active");
+  const todaySchedules = useMemo(() => {
+    const dayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+    const todayName = dayNames[new Date().getDay()];
+    return schedules.filter((s) => s.dayOfWeek === todayName);
+  }, [schedules]);
 
-  const { data: attendanceRecords } = useApi<AttendanceRecord[]>(
-    activeSession ? `/attendance/session/${activeSession._id}` : null
+  // Aggregate attendance from ALL active + closed sessions today
+  const todaySessionsWithData = useMemo(
+    () => todaySessions.filter((s) => s.status === "active" || s.status === "closed"),
+    [todaySessions]
   );
 
-  const present = (attendanceRecords ?? []).filter((r) => r.status === "present").length;
-  const absent = (attendanceRecords ?? []).filter((r) => r.status === "absent").length;
-  const late = (attendanceRecords ?? []).filter((r) => r.status === "late").length;
-  const sessionsToday = todaySessions.length;
+  // Fetch attendance for the first few sessions of the day to aggregate stats
+  const { data: records0 } = useApi<AttendanceRecord[]>(todaySessionsWithData[0] ? `/attendance/session/${todaySessionsWithData[0]._id}` : null);
+  const { data: records1 } = useApi<AttendanceRecord[]>(todaySessionsWithData[1] ? `/attendance/session/${todaySessionsWithData[1]._id}` : null);
+  const { data: records2 } = useApi<AttendanceRecord[]>(todaySessionsWithData[2] ? `/attendance/session/${todaySessionsWithData[2]._id}` : null);
+
+  const allRecords = useMemo(() => {
+    const combined: AttendanceRecord[] = [];
+    if (records0) combined.push(...records0);
+    if (records1) combined.push(...records1);
+    if (records2) combined.push(...records2);
+    return combined;
+  }, [records0, records1, records2]);
+
+  const present = allRecords.filter((r) => r.status === "present").length;
+  const absent = allRecords.filter((r) => r.status === "absent").length;
+  const late = allRecords.filter((r) => r.status === "late").length;
+  
+  // Sessions Today should count:
+  // 1. All instantiated sessions for today (that aren't canceled)
+  // 2. All schedules for today that haven't been instantiated yet
+  const sessionsTodayCount = useMemo(() => {
+    const instantiatedIds = new Set(todaySessions.map(s => s.scheduleId).filter(Boolean));
+    const nonInstantiatedSchedules = todaySchedules.filter(sch => !instantiatedIds.has(sch._id));
+    const validInstantiatedSessions = todaySessions.filter(s => s.status !== "canceled");
+    return validInstantiatedSessions.length + nonInstantiatedSchedules.length;
+  }, [todaySessions, todaySchedules]);
 
   return (
     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
       <StatCard color="bg-emerald-500" icon={CheckCircle2} label={t.dashboard.presentToday} value={present} unit={t.common.students} />
       <StatCard color="bg-red-500" icon={XCircle} label={t.dashboard.absentToday} value={absent} unit={t.common.students} />
       <StatCard color="bg-amber-500" icon={Clock} label={t.dashboard.lateToday} value={late} unit={t.common.students} />
-      <StatCard color="bg-violet-600" icon={CalendarDays} label={t.dashboard.sessionsToday} value={sessionsToday} unit={t.common.sessions} />
+      <StatCard color="bg-violet-600" icon={CalendarDays} label={t.dashboard.sessionsToday} value={sessionsTodayCount} unit={t.common.sessions} />
     </div>
   );
 }

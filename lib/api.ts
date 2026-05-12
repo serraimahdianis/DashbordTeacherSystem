@@ -1,6 +1,13 @@
 import axios from "axios";
 import useSWR, { SWRConfiguration } from "swr";
 import { getToken, logout } from "./utils";
+import type {
+  CreateModulePayload,
+  CreateSchedulePayload,
+  CreateSessionPayload,
+  ScanPayload,
+  SessionStatus,
+} from "@/types/api";
 
 // Backend runs at http://localhost:3000 with NO global prefix
 // Endpoints: /auth/teacher/login, /students, /sessions/teacher/:id, etc.
@@ -92,19 +99,28 @@ export const studentsApi = {
 
 // ─── Modules API ──────────────────────────────────────────────────────────────
 export const modulesApi = {
-  getAll: () => axiosInstance.get("/modules").then((r) => r.data),
+  getAll: () =>
+    axiosInstance.get("/modules").then((r) => r.data),
   getByTeacher: (teacherId: string) =>
     axiosInstance.get(`/modules/teacher/${teacherId}`).then((r) => r.data),
-  create: (data: unknown) =>
+  create: (data: CreateModulePayload) =>
     axiosInstance.post("/modules", data).then((r) => r.data),
+  update: (id: string, data: Partial<CreateModulePayload>) =>
+    axiosInstance.patch(`/modules/${id}`, data).then((r) => r.data),
+  delete: (id: string) =>
+    axiosInstance.delete(`/modules/${id}`).then((r) => r.data),
 };
 
 // ─── Schedules API ────────────────────────────────────────────────────────────
 export const schedulesApi = {
   getByTeacher: (teacherId: string) =>
     axiosInstance.get(`/schedules/teacher/${teacherId}`).then((r) => r.data),
-  create: (data: unknown) =>
+  create: (data: CreateSchedulePayload) =>
     axiosInstance.post("/schedules", data).then((r) => r.data),
+  update: (id: string, data: Partial<CreateSchedulePayload>) =>
+    axiosInstance.patch(`/schedules/${id}`, data).then((r) => r.data),
+  delete: (id: string) =>
+    axiosInstance.delete(`/schedules/${id}`).then((r) => r.data),
 };
 
 // ─── Sessions API ─────────────────────────────────────────────────────────────
@@ -117,15 +133,17 @@ export const sessionsApi = {
     axiosInstance.post(`/sessions/start/${scheduleId}`).then((r) => r.data),
   end: (sessionId: string) =>
     axiosInstance.post(`/sessions/${sessionId}/end`).then((r) => r.data),
-  createReplacement: (data: unknown) =>
+  createReplacement: (data: CreateSessionPayload) =>
     axiosInstance.post("/sessions", data).then((r) => r.data),
-  updateStatus: (id: string, status: string) =>
+  updateStatus: (id: string, status: SessionStatus) =>
     axiosInstance.patch(`/sessions/${id}/status`, { status }).then((r) => r.data),
+  delete: (id: string) =>
+    axiosInstance.delete(`/sessions/${id}`).then((r) => r.data),
 };
 
 // ─── Attendance API ───────────────────────────────────────────────────────────
 export const attendanceApi = {
-  scan: (data: { sessionId: string; studentId: string; status: string; scanTime?: string }) =>
+  scan: (data: ScanPayload) =>
     axiosInstance.post("/attendance/scan", data).then((r) => r.data),
   getBySession: (sessionId: string) =>
     axiosInstance.get(`/attendance/session/${sessionId}`).then((r) => r.data),

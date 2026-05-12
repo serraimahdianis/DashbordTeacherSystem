@@ -8,7 +8,7 @@ import Link from "next/link";
 import { useApi } from "@/lib/api";
 import { useTranslation } from "@/lib/locale-context";
 import type { Session, AttendanceRecord } from "@/types/api";
-import { getStudentName } from "@/types/api";
+import { getStudentName, getModuleName } from "@/types/api";
 
 interface RecentActivityProps {
   sessions: Session[];
@@ -77,11 +77,11 @@ export function RecentActivity({ sessions }: RecentActivityProps) {
               </div>
               <div className="flex-1 flex justify-between items-start">
                 <div>
-                  <p className="text-sm font-semibold text-gray-900">
-                    {getStudentName(record.studentId)} — {record.status}
+                  <p className="text-sm font-bold text-gray-900">
+                    {getStudentName(record.studentId)}
                   </p>
-                  <p className="text-xs text-gray-500 mt-0.5 capitalize">
-                    {recentSession ? (typeof recentSession.moduleId === "string" ? t.sessions.title : recentSession.moduleId.name) : "—"}
+                  <p className="text-[10px] text-gray-500 mt-0.5 font-medium uppercase tracking-wider">
+                    {recentSession ? getModuleName(recentSession.moduleId) : "—"} · {record.status}
                   </p>
                 </div>
                 <span className="text-xs font-medium text-gray-400 whitespace-nowrap ml-2">

@@ -84,6 +84,8 @@
     "inProgress": "Active",
     "planned": "Planned",
     "closed": "Closed",
+    "canceled": "Canceled",
+    "noCanceled": "No canceled sessions",
     "exportReport": "Export Report"
   },
   "live": {

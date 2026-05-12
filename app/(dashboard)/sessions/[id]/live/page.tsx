@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect, useMemo, useCallback } from "react";
-import { useParams } from "next/navigation";
+import { useState, useEffect, useMemo, useCallback, useSyncExternalStore } from "react";
+import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -23,27 +23,32 @@ import {
   CheckCircle2,
   XCircle,
   QrCode,
+  Loader2,
 } from "lucide-react";
 import { format, parseISO } from "date-fns";
-import { usePolling, useApi, studentsApi, attendanceApi, sessionsApi } from "@/lib/api";
+import { usePolling, studentsApi, attendanceApi, sessionsApi } from "@/lib/api";
 import { useTranslation } from "@/lib/locale-context";
-import type { Session, AttendanceRecord } from "@/types/api";
-import { getModuleName, getStudentName } from "@/types/api";
+import type { Session, AttendanceRecord, AttendanceStatus } from "@/types/api";
+import { getModuleName, getStudentName, getStudentId } from "@/types/api";
 
 type StatusFilter = "all" | "present" | "late" | "absent";
 
 export default function LiveSessionPage() {
   const params = useParams<{ id: string }>();
   const sessionId = params.id;
+  const router = useRouter();
   const { t } = useTranslation();
 
-  const { data: session } = useApi<Session>(`/sessions/${sessionId}`);
-  const { data: attendance, mutate } = usePolling<AttendanceRecord[]>(
+  const { data: session, mutate: mutateSession } = usePolling<Session>(
+    `/sessions/${sessionId}`,
+    5000
+  );
+
+  const { data: attendance, mutate: mutateAttendance } = usePolling<AttendanceRecord[]>(
     `/attendance/session/${sessionId}`,
     3000
   );
 
-  const [elapsedTime, setElapsedTime] = useState(0);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
   const [rfidInput, setRfidInput] = useState("");
@@ -51,12 +56,31 @@ export default function LiveSessionPage() {
   const [scanMsg, setScanMsg] = useState<{ text: string; ok: boolean } | null>(null);
   const [endingSession, setEndingSession] = useState(false);
   const [showQr, setShowQr] = useState(false);
+  const [changingStatusId, setChangingStatusId] = useState<string | null>(null);
+  const isMounted = useSyncExternalStore(
+    () => () => {},
+    () => true,
+    () => false
+  );
 
-  // Elapsed timer
+  // Time update for elapsed timer
+  const [now, setNow] = useState(Date.now());
+
   useEffect(() => {
-    const timer = setInterval(() => setElapsedTime((p) => p + 1), 1000);
-    return () => clearInterval(timer);
+    const interval = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(interval);
   }, []);
+
+  // Calculate elapsed time from session start
+  const elapsedTime = useMemo(() => {
+    if (!session) return 0;
+    // If the session is actively running, calculate elapsed time relative to today's date
+    const sessionDate = session.status === "active" ? new Date() : parseISO(session.date);
+    const [hours, minutes] = session.startTime.split(":").map(Number);
+    sessionDate.setHours(hours, minutes, 0, 0);
+    const diff = Math.floor((now - sessionDate.getTime()) / 1000);
+    return diff > 0 ? diff : 0;
+  }, [now, session]);
 
   const formatTime = (seconds: number) => {
     const h = Math.floor(seconds / 3600);
@@ -102,21 +126,43 @@ export default function LiveSessionPage() {
     [records]
   );
 
+  // Calculate if student should be marked as late (after 15 minutes from start)
+  const getScanStatus = useCallback((): AttendanceStatus => {
+    if (!session) return "present";
+
+    const now = new Date();
+    const [startH, startM] = session.startTime.split(":").map(Number);
+    const startMinutes = startH * 60 + startM;
+    const nowMinutes = now.getHours() * 60 + now.getMinutes();
+    const gracePeriodMinutes = 15;
+
+    return nowMinutes > startMinutes + gracePeriodMinutes ? "late" : "present";
+  }, [session]);
+
+  // Handle RFID scan
   const handleRfidScan = useCallback(async () => {
     if (!rfidInput.trim() || !sessionId) return;
+
     setScanLoading(true);
     setScanMsg(null);
+
     try {
       const student = await studentsApi.getByRfid(rfidInput.trim());
+      const status = getScanStatus();
+
       await attendanceApi.scan({
         sessionId,
         studentId: student._id,
-        status: "present",
+        status,
         scanTime: new Date().toISOString(),
       });
-      setScanMsg({ text: `✓ ${student.fullName} — ${t.live.present}`, ok: true });
+
+      const statusText = status === "late" ? t.live.late : t.live.present;
+      setScanMsg({ text: `✓ ${student.fullName} — ${statusText}`, ok: true });
       setRfidInput("");
-      mutate();
+
+      // Re-fetch attendance immediately
+      await mutateAttendance();
     } catch (err: unknown) {
       const msg =
         (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
@@ -124,15 +170,58 @@ export default function LiveSessionPage() {
     } finally {
       setScanLoading(false);
     }
-  }, [rfidInput, sessionId, mutate, t]);
+  }, [rfidInput, sessionId, getScanStatus, mutateAttendance, t]);
 
+  // Handle manual status change
+  const handleStatusChange = useCallback(
+    async (record: AttendanceRecord, newStatus: AttendanceStatus) => {
+      if (newStatus === record.status) return;
+
+      setChangingStatusId(record._id);
+      try {
+        const studentId = getStudentId(record.studentId);
+
+        await attendanceApi.scan({
+          sessionId,
+          studentId,
+          status: newStatus,
+          scanTime: newStatus === "absent" ? undefined : new Date().toISOString(),
+        });
+
+        await mutateAttendance();
+      } catch (err) {
+        console.error("Failed to update status:", err);
+      } finally {
+        setChangingStatusId(null);
+      }
+    },
+    [sessionId, mutateAttendance]
+  );
+
+  // Cycle through statuses: present -> late -> absent -> present
+  const cycleStatus = useCallback(
+    async (record: AttendanceRecord) => {
+      const statusCycle: Record<string, AttendanceStatus> = {
+        present: "late",
+        late: "absent",
+        absent: "present",
+      };
+      const newStatus = statusCycle[record.status] || "present";
+      await handleStatusChange(record, newStatus);
+    },
+    [handleStatusChange]
+  );
+
+  // End session and navigate back
   const handleEndSession = async () => {
     if (!sessionId) return;
     setEndingSession(true);
     try {
-      await sessionsApi.end(sessionId as string);
-      window.location.href = "/sessions";
-    } catch {
+      await sessionsApi.end(sessionId);
+      await mutateSession();
+      router.push("/sessions");
+    } catch (err) {
+      console.error("Failed to end session:", err);
       setEndingSession(false);
     }
   };
@@ -144,6 +233,16 @@ export default function LiveSessionPage() {
     if (status === "late") return <Clock className="h-4 w-4 text-amber-500" />;
     return <XCircle className="h-4 w-4 text-red-500" />;
   };
+
+  // Get badge variant based on status
+  const getBadgeVariant = (status: string): "present" | "late" | "absent" => {
+    if (status === "present") return "present";
+    if (status === "late") return "late";
+    return "absent";
+  };
+
+  // Show session ended message if closed
+  const isSessionEnded = session?.status === "closed";
 
   return (
     <div className="flex flex-col space-y-6 max-w-[1400px] mx-auto">
@@ -161,8 +260,15 @@ export default function LiveSessionPage() {
                 {t.live.running}
               </Badge>
             )}
+            {isSessionEnded && (
+              <Badge variant="outline" className="bg-gray-50 text-gray-600 border-gray-200 shadow-sm ml-2 px-2 py-0.5">
+                {t.sessions.closed}
+              </Badge>
+            )}
           </div>
-          <p className="text-gray-500 mt-1 ml-8 text-sm">{t.live.subtitle}</p>
+          <p className="text-gray-500 mt-1 ml-8 text-sm">
+            {isSessionEnded ? t.sessions.closed + " — " + t.live.subtitle : t.live.subtitle}
+          </p>
         </div>
         {session?.status === "active" && (
           <Button
@@ -171,7 +277,7 @@ export default function LiveSessionPage() {
             onClick={handleEndSession}
             disabled={endingSession}
           >
-            <Square className="h-4 w-4 fill-current" />
+            {endingSession ? <Loader2 className="h-4 w-4 animate-spin" /> : <Square className="h-4 w-4 fill-current" />}
             {endingSession ? t.common.loading : t.live.endSession}
           </Button>
         )}
@@ -292,9 +398,21 @@ export default function LiveSessionPage() {
                       </div>
                     </TableCell>
                     <TableCell className="text-center">
-                      <Badge variant={record.status === "present" ? "present" : record.status === "late" ? "late" : "absent"}>
-                        {record.status === "present" ? t.live.present : record.status === "late" ? t.live.late : t.live.absent}
-                      </Badge>
+                      <div className="flex items-center justify-center gap-2">
+                        <Badge variant={getBadgeVariant(record.status)}>
+                          {record.status === "present" ? t.live.present : record.status === "late" ? t.live.late : t.live.absent}
+                        </Badge>
+                        {!isSessionEnded && (
+                          <button
+                            onClick={() => cycleStatus(record)}
+                            disabled={changingStatusId === record._id}
+                            className="text-xs text-violet-600 hover:text-violet-800 font-medium disabled:opacity-50"
+                            title={t.common.edit}
+                          >
+                            {changingStatusId === record._id ? <Loader2 className="h-3 w-3 animate-spin" /> : "↻"}
+                          </button>
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell className="text-gray-600 text-center font-mono text-sm">
                       {record.scanTime ? format(parseISO(record.scanTime), "HH:mm:ss") : "—"}
@@ -332,9 +450,10 @@ export default function LiveSessionPage() {
                   <div className="h-20 w-20 rounded-2xl bg-violet-50 flex items-center justify-center text-violet-600 mb-4 border border-violet-100">
                     <QrCode className="h-10 w-10" />
                   </div>
-                  <Button 
+                  <Button
                     onClick={() => setShowQr(true)}
                     className="bg-violet-600 hover:bg-violet-700 gap-2"
+                    disabled={isSessionEnded}
                   >
                     <QrCode className="h-4 w-4" />
                     {t.live.showQr}
@@ -344,16 +463,18 @@ export default function LiveSessionPage() {
                 <div className="flex flex-col items-center w-full">
                   <div className="p-4 bg-white rounded-xl shadow-inner border border-gray-100 mb-4">
                     <QRCodeCanvas
-                      value={sessionId ?? ""}
-                      size={180}
+                      value={JSON.stringify({ sessionId, type: "attendance_auth" })}
+                      size={200}
                       level="H"
-                      includeMargin={false}
+                      includeMargin={true}
+                      fgColor="#000000"
+                      bgColor="#ffffff"
                     />
                   </div>
                   <p className="text-xs text-center text-gray-500 mb-4 px-4">
                     {t.live.qrInstructions}
                   </p>
-                  <Button 
+                  <Button
                     variant="outline"
                     onClick={() => setShowQr(false)}
                     className="w-full text-xs h-8"
@@ -383,7 +504,9 @@ export default function LiveSessionPage() {
                 </div>
               </div>
               <p className="text-sm font-bold text-gray-900 mb-1">{t.live.scanCard}</p>
-              <p className="text-xs text-gray-500 mb-4">{t.live.rfidInput}</p>
+              <p className="text-xs text-gray-500 mb-4">
+                {session ? `Grace period: 15 min after ${session.startTime}` : t.live.rfidInput}
+              </p>
               <div className="flex gap-2 w-full">
                 <Input
                   placeholder={t.live.rfidInput}
@@ -391,13 +514,14 @@ export default function LiveSessionPage() {
                   onChange={(e) => setRfidInput(e.target.value)}
                   onKeyDown={(e) => e.key === "Enter" && handleRfidScan()}
                   className="flex-1 h-9 text-sm"
+                  disabled={isSessionEnded}
                 />
                 <Button
                   onClick={handleRfidScan}
-                  disabled={!rfidInput.trim() || scanLoading}
+                  disabled={!rfidInput.trim() || scanLoading || isSessionEnded}
                   className="bg-violet-600 hover:bg-violet-700 text-white h-9 px-3 text-xs font-semibold"
                 >
-                  {scanLoading ? "..." : t.live.recordScan}
+                  {scanLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : t.live.recordScan}
                 </Button>
               </div>
               {scanMsg && (
@@ -418,7 +542,9 @@ export default function LiveSessionPage() {
                 {recentScans.map((record) => (
                   <div key={record._id} className="flex items-center justify-between text-sm">
                     <div className="flex items-center gap-2 flex-1 min-w-0">
-                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-500 shrink-0" />
+                      <span className={`h-1.5 w-1.5 rounded-full shrink-0 ${
+                        record.status === "present" ? "bg-emerald-500" : record.status === "late" ? "bg-amber-500" : "bg-red-500"
+                      }`} />
                       <Avatar className="h-6 w-6 shrink-0">
                         <AvatarFallback className="text-[10px] bg-violet-100 text-violet-700">
                           {getStudentName(record.studentId).substring(0, 2).toUpperCase()}
@@ -450,26 +576,28 @@ export default function LiveSessionPage() {
             </CardHeader>
             <CardContent className="pt-2 pb-4">
               <div className="flex items-center">
-                <div className="h-[120px] w-[120px] relative">
-                  <ResponsiveContainer width="100%" height="100%" minWidth={80} minHeight={80}>
-                    <PieChart>
-                      <Pie
-                        data={pieData}
-                        cx="50%"
-                        cy="50%"
-                        innerRadius={35}
-                        outerRadius={55}
-                        paddingAngle={2}
-                        dataKey="value"
-                        stroke="none"
-                      >
-                        {pieData.map((entry, index) => (
-                          <Cell key={`cell-${index}`} fill={entry.color} />
-                        ))}
-                      </Pie>
-                      <RechartsTooltip contentStyle={{ borderRadius: "8px", fontSize: "12px" }} />
-                    </PieChart>
-                  </ResponsiveContainer>
+                <div className="h-[120px] w-[120px] min-h-[120px] relative">
+                  {isMounted && (
+                    <ResponsiveContainer width="100%" height="100%" minWidth={80} minHeight={80} debounce={50}>
+                      <PieChart>
+                        <Pie
+                          data={pieData}
+                          cx="50%"
+                          cy="50%"
+                          innerRadius={35}
+                          outerRadius={55}
+                          paddingAngle={2}
+                          dataKey="value"
+                          stroke="none"
+                        >
+                          {pieData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.color} />
+                          ))}
+                        </Pie>
+                        <RechartsTooltip contentStyle={{ borderRadius: "8px", fontSize: "12px" }} />
+                      </PieChart>
+                    </ResponsiveContainer>
+                  )}
                   <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
                     <span className="text-lg font-bold text-gray-900 leading-none">{totalCount}</span>
                     <span className="text-[10px] font-medium text-gray-500">{t.live.total}</span>

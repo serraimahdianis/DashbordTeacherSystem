@@ -7,9 +7,9 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from "@/components/ui/sheet";
-import { CalendarDays, Plus, ChevronLeft, ChevronRight, Loader2 } from "lucide-react";
+import { CalendarDays, Plus, ChevronLeft, ChevronRight, Loader2, Trash2 } from "lucide-react";
 import { format } from "date-fns";
-import { useApi, axiosInstance, modulesApi } from "@/lib/api";
+import { useApi, modulesApi, schedulesApi } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { useTranslation } from "@/lib/locale-context";
 import type { Schedule, Module } from "@/types/api";
@@ -41,6 +41,7 @@ export default function SchedulePage() {
   const [sheetOpen, setSheetOpen] = useState(false);
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   const [moduleSheetOpen, setModuleSheetOpen] = useState(false);
   const [moduleSaving, setModuleSaving] = useState(false);
@@ -55,7 +56,7 @@ export default function SchedulePage() {
     try {
       await modulesApi.create({
         name: moduleForm.name,
-        year: moduleForm.year,
+        year: moduleForm.year as "L1" | "L2" | "L3" | "M1" | "M2",
         teacherId: user.id,
       });
       await mutate(user?.id ? `/modules/teacher/${user.id}` : null);
@@ -97,13 +98,13 @@ export default function SchedulePage() {
     setFormError(null);
     setSaving(true);
     try {
-      await axiosInstance.post("/schedules", {
+      await schedulesApi.create({
         teacherId: user.id,
         moduleId: form.moduleId,
-        type: form.type,
-        year: form.year,
+        type: form.type as "cours" | "td" | "tp",
+        year: form.year as "L1" | "L2" | "L3" | "M1" | "M2",
         group: form.group || null,
-        dayOfWeek: form.dayOfWeek,
+        dayOfWeek: form.dayOfWeek as "Sunday" | "Monday" | "Tuesday" | "Wednesday" | "Thursday" | "Friday" | "Saturday",
         startTime: form.startTime,
         endTime: form.endTime,
         room: form.room,
@@ -116,6 +117,18 @@ export default function SchedulePage() {
       setFormError(typeof msg === "string" ? msg : "Failed to save schedule.");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleDelete = async (scheduleId: string) => {
+    setDeletingId(scheduleId);
+    try {
+      await schedulesApi.delete(scheduleId);
+      await mutate(swrKey);
+    } catch (err) {
+      console.error("Failed to delete schedule:", err);
+    } finally {
+      setDeletingId(null);
     }
   };
 
@@ -401,12 +414,13 @@ export default function SchedulePage() {
                   <TableHead className="font-bold text-gray-900">{t.schedule.day}</TableHead>
                   <TableHead className="font-bold text-gray-900">{t.sessions.time}</TableHead>
                   <TableHead className="font-bold text-gray-900">{t.sessions.room}</TableHead>
+                  <TableHead className="font-bold text-gray-900 text-right">{t.sessions.action}</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {filteredSchedules.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={7} className="text-center text-gray-500 py-8">
+                    <TableCell colSpan={8} className="text-center text-gray-500 py-8">
                       {t.common.noData}
                     </TableCell>
                   </TableRow>
@@ -428,6 +442,21 @@ export default function SchedulePage() {
                       {schedule.startTime} - {schedule.endTime}
                     </TableCell>
                     <TableCell className="text-gray-600">{schedule.room}</TableCell>
+                    <TableCell className="text-right">
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        className="h-8 w-8 text-red-500 border-red-200 hover:bg-red-50 hover:text-red-600"
+                        onClick={() => handleDelete(schedule._id)}
+                        disabled={deletingId === schedule._id}
+                      >
+                        {deletingId === schedule._id ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <Trash2 className="h-3.5 w-3.5" />
+                        )}
+                      </Button>
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>

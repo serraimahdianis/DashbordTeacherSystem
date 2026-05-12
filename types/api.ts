@@ -1,4 +1,4 @@
-// Domain types matching the NestJS backend API
+  // Domain types matching the NestJS backend API
 // All dates from the API come as ISO strings — parse with new Date() at use site
 
 export interface AuthUser {
@@ -6,6 +6,7 @@ export interface AuthUser {
   email: string;
   fullName: string;
   department: string;
+  role: "teacher" | "admin";
 }
 
 // Backend login returns ONLY { access_token, role }
@@ -59,7 +60,7 @@ export interface Schedule {
   room: string;
 }
 
-export type SessionStatus = "planned" | "active" | "closed";
+export type SessionStatus = "planned" | "active" | "closed" | "canceled";
 
 export interface Session {
   _id: string;
@@ -86,6 +87,47 @@ export interface AttendanceRecord {
   scanTime: string | null;
 }
 
+// ─── Typed payloads for API mutations (match Swagger DTOs) ─────────────────────
+
+export interface CreateModulePayload {
+  name: string;
+  teacherId: string;
+  year: ScheduleYear;
+}
+
+export interface CreateSchedulePayload {
+  teacherId: string;
+  moduleId: string;
+  type: ScheduleType;
+  year: ScheduleYear;
+  group: string | null;
+  dayOfWeek: DayOfWeek;
+  startTime: string;
+  endTime: string;
+  room: string;
+}
+
+export interface CreateSessionPayload {
+  scheduleId?: string | null;
+  teacherId: string;
+  moduleId: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+  type: ScheduleType;
+  group?: string | null;
+  status?: SessionStatus;
+  isReplacement?: boolean;
+  reasonForReplacement?: string;
+}
+
+export interface ScanPayload {
+  sessionId: string;
+  studentId: string;
+  status: AttendanceStatus;
+  scanTime?: string;
+}
+
 // Helper to extract module name from populated or unpopulated field
 export function getModuleName(moduleId: string | Module | undefined): string {
   if (!moduleId) return "—";
@@ -104,6 +146,13 @@ export function getStudentName(studentId: string | Student | undefined): string 
 export function getStudentRfid(studentId: string | Student | undefined): string {
   if (!studentId || typeof studentId === "string") return "—";
   return studentId.rfidCode;
+}
+
+// Helper to extract student id from populated or unpopulated field
+export function getStudentId(studentId: string | Student | undefined): string {
+  if (!studentId) return "";
+  if (typeof studentId === "string") return studentId;
+  return studentId._id;
 }
 
 // Decode JWT payload (no verification — just base64 decode the claims)

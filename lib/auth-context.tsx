@@ -59,7 +59,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     // Step 3: Store token first so the next request can use it
     // (temporarily store minimal user so getToken() works)
-    setCurrentUser({ id: payload.sub, email: "", fullName: "", department: "" }, token);
+    setCurrentUser({ id: payload.sub, email: "", fullName: "", department: "", role: (payload.role as "teacher" | "admin") || "teacher" }, token);
 
     // Step 4: Fetch full teacher profile from GET /teachers/:id
     const teacher: Teacher = await teachersApi.getById(payload.sub);
@@ -72,6 +72,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       email: teacher.email,
       fullName: teacher.fullName,
       department: teacher.department,
+      role: (payload.role as "teacher" | "admin") || "teacher",
     };
     setCurrentUser(authUser, token);
     setUser(authUser);
