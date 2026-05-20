@@ -88,9 +88,7 @@ export function AttendanceChart({ sessions }: AttendanceChartProps) {
             {isMounted && (
               <ResponsiveContainer
                 width="100%"
-                height="100%"
-                minWidth={300}
-                minHeight={200}
+                height={280}
                 debounce={50}
               >
                 <LineChart

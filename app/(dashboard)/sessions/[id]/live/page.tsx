@@ -26,7 +26,12 @@ import {
   Loader2,
 } from "lucide-react";
 import { format, parseISO } from "date-fns";
-import { usePolling, studentsApi, attendanceApi, sessionsApi } from "@/lib/api";
+import { fetcher, usePolling, studentsApi, attendanceApi, sessionsApi } from "@/lib/api";
+import {
+  connectSocket,
+  joinSessionRoom,
+  leaveSessionRoom,
+} from "@/lib/socket";
 import { useTranslation } from "@/lib/locale-context";
 import type { Session, AttendanceRecord, AttendanceStatus } from "@/types/api";
 import { getModuleName, getStudentName, getStudentId } from "@/types/api";
@@ -44,10 +49,8 @@ export default function LiveSessionPage() {
     5000
   );
 
-  const { data: attendance, mutate: mutateAttendance } = usePolling<AttendanceRecord[]>(
-    `/attendance/session/${sessionId}`,
-    3000
-  );
+  const [records, setRecords] = useState<AttendanceRecord[]>([]);
+  const [socketOnline, setSocketOnline] = useState(true);
 
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
@@ -89,7 +92,102 @@ export default function LiveSessionPage() {
     return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
   };
 
-  const records = useMemo(() => attendance ?? [], [attendance]);
+  // Socket.IO: connect to session room on mount
+  useEffect(() => {
+    const socket = connectSocket();
+
+    const onScan = (payload: {
+      sessionId: string;
+      studentId: string;
+      studentName: string;
+      status: string;
+      scanTime: string;
+    }) => {
+      setRecords((prev) => {
+        const existingIdx = prev.findIndex(
+          (r) => getStudentId(r.studentId) === payload.studentId
+        );
+        if (existingIdx >= 0) {
+          const updated = [...prev];
+          updated[existingIdx] = {
+            ...updated[existingIdx],
+            status: payload.status as AttendanceStatus,
+            scanTime: payload.scanTime,
+          };
+          return updated;
+        }
+        return [
+          ...prev,
+          {
+            _id: `socket-${payload.studentId}-${Date.now()}`,
+            sessionId,
+            studentId: payload.studentId as any,
+            status: payload.status as AttendanceStatus,
+            scanTime: payload.scanTime,
+          },
+        ];
+      });
+    };
+
+    const onStatusChanged = (payload: {
+      sessionId: string;
+      studentId: string;
+      newStatus: string;
+    }) => {
+      setRecords((prev) =>
+        prev.map((r) =>
+          getStudentId(r.studentId) === payload.studentId
+            ? { ...r, status: payload.newStatus as AttendanceStatus }
+            : r
+        )
+      );
+    };
+
+    const onSessionEnded = () => {
+      mutateSession();
+    };
+
+    const onConnect = () => setSocketOnline(true);
+    const onDisconnect = () => setSocketOnline(false);
+
+    socket.on("connect", onConnect);
+    socket.on("disconnect", onDisconnect);
+    socket.on("attendance:scan", onScan);
+    socket.on("attendance:status-changed", onStatusChanged);
+    socket.on("session:ended", onSessionEnded);
+
+    // Fetch initial attendance data
+    fetcher(`/attendance/session/${sessionId}`)
+      .then((data) => {
+        const list = Array.isArray(data) ? data : data?.attendance ?? [];
+        setRecords(list);
+      })
+      .catch(() => {});
+
+    joinSessionRoom(sessionId);
+
+    return () => {
+      socket.off("connect", onConnect);
+      socket.off("disconnect", onDisconnect);
+      socket.off("attendance:scan", onScan);
+      socket.off("attendance:status-changed", onStatusChanged);
+      socket.off("session:ended", onSessionEnded);
+      leaveSessionRoom(sessionId);
+    };
+  }, [sessionId, mutateSession]);
+
+  // Fallback polling when socket is offline
+  useEffect(() => {
+    if (socketOnline) return;
+    const interval = setInterval(async () => {
+      try {
+        const data = await fetcher(`/attendance/session/${sessionId}`);
+        const list = Array.isArray(data) ? data : data?.attendance ?? [];
+        setRecords(list);
+      } catch {}
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [sessionId, socketOnline]);
 
   const filteredAttendance = useMemo(
     () =>
@@ -160,9 +258,6 @@ export default function LiveSessionPage() {
       const statusText = status === "late" ? t.live.late : t.live.present;
       setScanMsg({ text: `✓ ${student.fullName} — ${statusText}`, ok: true });
       setRfidInput("");
-
-      // Re-fetch attendance immediately
-      await mutateAttendance();
     } catch (err: unknown) {
       const msg =
         (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
@@ -170,7 +265,7 @@ export default function LiveSessionPage() {
     } finally {
       setScanLoading(false);
     }
-  }, [rfidInput, sessionId, getScanStatus, mutateAttendance, t]);
+  }, [rfidInput, sessionId, getScanStatus, t]);
 
   // Handle manual status change
   const handleStatusChange = useCallback(
@@ -187,15 +282,13 @@ export default function LiveSessionPage() {
           status: newStatus,
           scanTime: newStatus === "absent" ? undefined : new Date().toISOString(),
         });
-
-        await mutateAttendance();
       } catch (err) {
         console.error("Failed to update status:", err);
       } finally {
         setChangingStatusId(null);
       }
     },
-    [sessionId, mutateAttendance]
+    [sessionId]
   );
 
   // Cycle through statuses: present -> late -> absent -> present
@@ -578,7 +671,7 @@ export default function LiveSessionPage() {
               <div className="flex items-center">
                 <div className="h-[120px] w-[120px] min-h-[120px] relative">
                   {isMounted && (
-                    <ResponsiveContainer width="100%" height="100%" minWidth={80} minHeight={80} debounce={50}>
+                    <ResponsiveContainer width="100%" height={120} debounce={50}>
                       <PieChart>
                         <Pie
                           data={pieData}
