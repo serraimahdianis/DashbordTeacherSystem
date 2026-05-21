@@ -25,7 +25,8 @@ import {
   QrCode,
   Loader2,
 } from "lucide-react";
-import { format, parseISO } from "date-fns";
+import { parseISO } from "date-fns";
+import { formatDate } from "@/lib/utils";
 import { fetcher, usePolling, studentsApi, attendanceApi, sessionsApi } from "@/lib/api";
 import {
   connectSocket,

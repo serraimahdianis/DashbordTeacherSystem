@@ -8,7 +8,7 @@ import { Button } from "@/components/ui/button";
 import { CheckCircle } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { useTranslation } from "@/lib/locale-context";
-import { teachersApi } from "@/lib/api";
+import { axiosInstance, teachersApi } from "@/lib/api";
 
 export default function SettingsPage() {
   const { user } = useAuth();
@@ -167,6 +167,25 @@ export default function SettingsPage() {
                 !passwordHasUppercase ||
                 !passwordHasNumber
               }
+              onClick={async () => {
+                if (!user?.id) return;
+                setError(null);
+                setSaved(false);
+                try {
+                  await axiosInstance.patch("/auth/teacher/change-password", {
+                    currentPassword,
+                    newPassword,
+                  });
+                  setCurrentPassword("");
+                  setNewPassword("");
+                  setConfirmPassword("");
+                  setSaved(true);
+                  setTimeout(() => setSaved(false), 2000);
+                } catch (err: unknown) {
+                  const axiosErr = err as { response?: { data?: { message?: string } } };
+                  setError(axiosErr.response?.data?.message || t.common.error);
+                }
+              }}
             >
               {t.settings.updatePassword}
             </Button>

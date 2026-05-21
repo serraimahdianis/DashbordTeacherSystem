@@ -1,8 +1,20 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
+import { format, parseISO } from "date-fns";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
+}
+
+export function formatDate(dateStr: string | null | undefined, fmt: string): string {
+  if (!dateStr) return '';
+  try {
+    const d = parseISO(dateStr);
+    if (isNaN(d.getTime())) return '';
+    return format(d, fmt);
+  } catch {
+    return '';
+  }
 }
 
 export type { AuthUser } from "@/types/api";
@@ -34,6 +46,7 @@ export function getCurrentUser() {
 }
 
 export function setCurrentUser(user: object, token: string): void {
+  if (typeof window === 'undefined') return;
   localStorage.setItem(AUTH_USER_KEY, JSON.stringify(user));
   localStorage.setItem(AUTH_TOKEN_KEY, token);
   // Mirror token in a JS-accessible cookie so middleware can read it
@@ -41,6 +54,7 @@ export function setCurrentUser(user: object, token: string): void {
 }
 
 export function logout(): void {
+  if (typeof window === 'undefined') return;
   localStorage.removeItem(AUTH_USER_KEY);
   localStorage.removeItem(AUTH_TOKEN_KEY);
   // Clear the cookie mirror

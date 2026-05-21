@@ -10,7 +10,8 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTr
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { CalendarDays, Play, Eye, CheckCircle2, ChevronLeft, ChevronRight, Plus, Loader2, RotateCcw, Ban, Clock } from "lucide-react";
-import { format, parseISO } from "date-fns";
+import { parseISO } from "date-fns";
+import { formatDate } from "@/lib/utils";
 import { useApi, sessionsApi, modulesApi } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { useTranslation } from "@/lib/locale-context";
@@ -492,7 +493,7 @@ export default function SessionsPage() {
                       <TableCell className="text-gray-600">
                         <div className="flex items-center gap-2">
                           <CalendarDays className="h-3.5 w-3.5 text-gray-400" />
-                          {format(parseISO(session.date), "MMM d, yyyy (EEE)")}
+                          {formatDate(session.date, "MMM d, yyyy (EEE)")}
                         </div>
                       </TableCell>
                       <TableCell className="text-gray-600">

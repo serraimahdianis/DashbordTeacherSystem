@@ -23,7 +23,7 @@ const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 
 export function AttendanceChart({ sessions }: AttendanceChartProps) {
   const { t } = useTranslation();
-  const [weekFilter, setWeekFilter] = useState(t.dashboard.thisWeek);
+  const [weekOffset, setWeekOffset] = useState(0);
 
   // Use useSyncExternalStore to detect mounting without triggering cascading renders
   const isMounted = useSyncExternalStore(
@@ -34,7 +34,8 @@ export function AttendanceChart({ sessions }: AttendanceChartProps) {
 
   const chartData = useMemo(() => {
     const today = startOfDay(new Date());
-    const weekStart = startOfWeek(today, { weekStartsOn: 0 });
+    const offsetDays = weekOffset * 7;
+    const weekStart = startOfWeek(offsetDays === 0 ? today : addDays(today, offsetDays), { weekStartsOn: 0 });
     
     return DAYS.map((day, i) => {
       const dayDateObj = addDays(weekStart, i);
@@ -53,7 +54,7 @@ export function AttendanceChart({ sessions }: AttendanceChartProps) {
       ).length;
 
       // Only show data if the day is not in the future, or if it has planned sessions
-      const isFuture = isAfter(dayDateObj, today);
+      const isFuture = weekOffset === 0 && isAfter(dayDateObj, today);
       
       return {
         day,
@@ -61,7 +62,7 @@ export function AttendanceChart({ sessions }: AttendanceChartProps) {
         planned: planned === 0 && isFuture ? null : planned,
       };
     });
-  }, [sessions, weekFilter]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [sessions, weekOffset]);
 
   return (
     <Card className="lg:col-span-2 shadow-sm border-gray-200">
@@ -71,11 +72,11 @@ export function AttendanceChart({ sessions }: AttendanceChartProps) {
         </CardTitle>
         <select
           className="text-sm border border-gray-200 rounded-md px-3 py-1.5 text-gray-600 bg-white outline-none focus:ring-2 focus:ring-violet-500"
-          value={weekFilter}
-          onChange={(e) => setWeekFilter(e.target.value)}
+          value={weekOffset}
+          onChange={(e) => setWeekOffset(Number(e.target.value))}
         >
-          <option>{t.dashboard.thisWeek}</option>
-          <option>{t.dashboard.lastWeek}</option>
+          <option value={0}>{t.dashboard.thisWeek}</option>
+          <option value={-1}>{t.dashboard.lastWeek}</option>
         </select>
       </CardHeader>
       <CardContent>

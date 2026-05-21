@@ -1,7 +1,8 @@
 "use client";
 
 import { useMemo } from "react";
-import { format, parseISO } from "date-fns";
+import { parseISO } from "date-fns";
+import { formatDate } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CheckCircle2, XCircle, Clock } from "lucide-react";
 import Link from "next/link";
@@ -85,7 +86,7 @@ export function RecentActivity({ sessions }: RecentActivityProps) {
                   </p>
                 </div>
                 <span className="text-xs font-medium text-gray-400 whitespace-nowrap ml-2">
-                  {record.scanTime ? format(parseISO(record.scanTime), "HH:mm") : "—"}
+                  {record.scanTime ? formatDate(record.scanTime, "HH:mm") : "—"}
                 </span>
               </div>
             </div>

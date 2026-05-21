@@ -62,11 +62,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setCurrentUser({ id: payload.sub, email: "", fullName: "", department: "", role: (payload.role as "teacher" | "admin") || "teacher" }, token);
 
     // Step 4: Fetch full teacher profile from GET /teachers/:id
-    const teacher: Teacher = await teachersApi.getById(payload.sub);
+    const teacherData = await teachersApi.getById(payload.sub);
+    if (!teacherData || typeof teacherData._id !== 'string') {
+      throw new Error('Invalid teacher profile received from server');
+    }
+    const teacher = teacherData as Teacher;
 
     // Step 5: Build the AuthUser and persist
-    const teacherUnknown = teacher as unknown as { id?: string };
-    const teacherId = (teacher as Teacher)._id ?? teacherUnknown.id;
+    const teacherId = (teacher as Teacher)._id ?? (teacher as unknown as { id?: string }).id;
     const authUser: AuthUser = {
       id: teacherId ?? "",
       email: teacher.email,

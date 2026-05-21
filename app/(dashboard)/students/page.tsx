@@ -33,15 +33,15 @@ export default function StudentsPage() {
   const teacherGroups = useMemo(() => {
     if (!teacherSchedules) return new Set<string>();
     // Normalize group names to ensure matching (trim and uppercase)
-    return new Set(teacherSchedules.map(s => s.group?.toString().trim()).filter(Boolean));
+    return new Set(teacherSchedules.map(s => (s.group?.toString() ?? '').trim()).filter(Boolean));
   }, [teacherSchedules]);
 
   const uniqueYears = useMemo(() => [...new Set(allStudents.map((s) => s.year))].sort(), [allStudents]);
-  const uniqueGroups = useMemo(() => [...new Set(allStudents.map((s) => s.group?.toString().trim()))].filter(Boolean).sort(), [allStudents]);
+  const uniqueGroups = useMemo(() => [...new Set(allStudents.map((s) => (s.group?.toString() ?? '').trim()))].filter(Boolean).sort(), [allStudents]);
 
   const filteredStudents = useMemo(() => {
     return allStudents.filter((s) => {
-      const studentGroup = s.group?.toString().trim();
+      const studentGroup = (s.group?.toString() ?? '').trim();
       
       // Identity filter: Only show students in groups this teacher teaches
       if (showOnlyMyStudents && teacherGroups.size > 0) {

@@ -7,7 +7,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { CalendarDays, Play, Clock, Loader2, ChevronRight, Eye } from "lucide-react";
-import { format, parseISO, isToday, isAfter, startOfDay } from "date-fns";
+import { parseISO, isToday, isAfter, startOfDay } from "date-fns";
+import { formatDate } from "@/lib/utils";
 import { useApi, sessionsApi } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { useTranslation } from "@/lib/locale-context";
@@ -298,7 +299,7 @@ export default function DashboardPage() {
                     </div>
                     <div className="text-right flex flex-col items-end">
                       <span className="text-gray-900 text-sm font-semibold">
-                        {format(parseISO(s.date), "EEE, MMM d")}
+                        {formatDate(s.date, "EEE, MMM d")}
                       </span>
                       <span className="text-gray-400 text-[11px]">
                         {s.startTime}

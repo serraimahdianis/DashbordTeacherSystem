@@ -121,6 +121,7 @@ export default function SchedulePage() {
   };
 
   const handleDelete = async (scheduleId: string) => {
+    if (!confirm(t.schedule.deleteConfirm || "Are you sure you want to delete this schedule?")) return;
     setDeletingId(scheduleId);
     try {
       await schedulesApi.delete(scheduleId);

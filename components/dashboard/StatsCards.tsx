@@ -1,9 +1,9 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useEffect, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { CheckCircle2, XCircle, Clock, CalendarDays } from "lucide-react";
-import { useApi } from "@/lib/api";
+import { axiosInstance } from "@/lib/api";
 import { useTranslation } from "@/lib/locale-context";
 import { isToday, parseISO } from "date-fns";
 import type { Session, AttendanceRecord, Schedule } from "@/types/api";
@@ -65,18 +65,38 @@ export function StatsCards({ sessions, schedules }: StatsCardsProps) {
     [todaySessions]
   );
 
-  // Fetch attendance for the first few sessions of the day to aggregate stats
-  const { data: records0 } = useApi<AttendanceRecord[]>(todaySessionsWithData[0] ? `/attendance/session/${todaySessionsWithData[0]._id}` : null);
-  const { data: records1 } = useApi<AttendanceRecord[]>(todaySessionsWithData[1] ? `/attendance/session/${todaySessionsWithData[1]._id}` : null);
-  const { data: records2 } = useApi<AttendanceRecord[]>(todaySessionsWithData[2] ? `/attendance/session/${todaySessionsWithData[2]._id}` : null);
+  const [allRecords, setAllRecords] = useState<AttendanceRecord[]>([]);
+  const [loading, setLoading] = useState(false);
 
-  const allRecords = useMemo(() => {
-    const combined: AttendanceRecord[] = [];
-    if (records0) combined.push(...records0);
-    if (records1) combined.push(...records1);
-    if (records2) combined.push(...records2);
-    return combined;
-  }, [records0, records1, records2]);
+  useEffect(() => {
+    if (todaySessionsWithData.length === 0) {
+      setAllRecords([]);
+      return;
+    }
+
+    let cancelled = false;
+    setLoading(true);
+
+    const fetchAll = async () => {
+      try {
+        const results = await Promise.all(
+          todaySessionsWithData.map((s) =>
+            axiosInstance.get<AttendanceRecord[]>(`/attendance/session/${s._id}`).then((r) => r.data)
+          )
+        );
+        if (!cancelled) {
+          setAllRecords(results.flat());
+        }
+      } catch {
+        if (!cancelled) setAllRecords([]);
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+
+    fetchAll();
+    return () => { cancelled = true; };
+  }, [todaySessionsWithData]);
 
   const present = allRecords.filter((r) => r.status === "present").length;
   const absent = allRecords.filter((r) => r.status === "absent").length;

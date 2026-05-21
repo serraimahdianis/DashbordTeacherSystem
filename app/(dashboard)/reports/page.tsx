@@ -6,7 +6,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Download, FileText, BookOpen, Users, TrendingUp, Printer } from "lucide-react";
-import { format, parseISO } from "date-fns";
+import { parseISO } from "date-fns";
+import { formatDate } from "@/lib/utils";
 import { useApi } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { useTranslation } from "@/lib/locale-context";
@@ -127,7 +128,7 @@ export default function ReportsPage() {
     const headers = ["Session ID", t.sessions.date, t.sessions.module, t.sessions.type, t.sessions.group, t.sessions.time, t.sessions.status];
     const rows = completedSessions.map((s) => [
       s._id,
-      format(parseISO(s.date), "yyyy-MM-dd"),
+      formatDate(s.date, "yyyy-MM-dd"),
       getModuleName(s.moduleId),
       s.type.toUpperCase(),
       s.group ?? "—",
@@ -259,7 +260,7 @@ export default function ReportsPage() {
                       {session._id}
                     </TableCell>
                     <TableCell className="text-gray-700">
-                      {format(parseISO(session.date), "MMM d, yyyy")}
+                      {formatDate(session.date, "MMM d, yyyy")}
                     </TableCell>
                     <TableCell className="font-semibold text-gray-900">
                       {getModuleName(session.moduleId)}
@@ -337,7 +338,7 @@ export default function ReportsPage() {
             <div className="p-4 border-b border-gray-100 flex justify-between items-center bg-gray-50/50 print:hidden">
               <div>
                 <h3 className="font-bold text-gray-900 text-base">{t.sessions?.view || "Report Preview"} — {getModuleName(selectedSession.moduleId)}</h3>
-                <p className="text-xs text-gray-500">{format(parseISO(selectedSession.date), "PPP")}</p>
+                <p className="text-xs text-gray-500">{formatDate(selectedSession.date, "PPP")}</p>
               </div>
               <div className="flex items-center gap-2">
                 <Button 
@@ -370,7 +371,7 @@ export default function ReportsPage() {
                     <div className="text-xs font-bold bg-gray-100 text-gray-800 px-2 py-1 rounded inline-block uppercase tracking-wider mb-1">
                       {selectedSession.type} {selectedSession.group ? `• Group ${selectedSession.group}` : ""}
                     </div>
-                    <p className="text-xs text-gray-500 mt-1">{format(parseISO(selectedSession.date), "EEEE, MMMM d, yyyy")}</p>
+                    <p className="text-xs text-gray-500 mt-1">{formatDate(selectedSession.date, "EEEE, MMMM d, yyyy")}</p>
                     <p className="text-xs text-gray-500 font-mono mt-0.5">{selectedSession.startTime} – {selectedSession.endTime}</p>
                   </div>
                 </div>
