@@ -26,12 +26,15 @@ export default function DashboardPage() {
   const { mutate } = useSWRConfig();
   const [startingId, setStartingId] = useState<string | null>(null);
 
-  const { data: sessions, isLoading: sessionsLoading } = useApi<Session[]>(
+  const { data: sessionsData, isLoading: sessionsLoading } = useApi<{ data: Session[] }>(
     user?.id ? `/sessions/teacher/${user.id}` : null
   );
-  const { data: schedules, isLoading: schedulesLoading } = useApi<Schedule[]>(
+  const { data: schedulesData, isLoading: schedulesLoading } = useApi<{ data: Schedule[] }>(
     user?.id ? `/schedules/teacher/${user.id}` : null
   );
+
+  const sessions = sessionsData?.data;
+  const schedules = schedulesData?.data;
 
   const isLoading = sessionsLoading || schedulesLoading;
 
@@ -139,8 +142,6 @@ export default function DashboardPage() {
     
     const now = new Date();
     const today = startOfDay(now);
-    const dayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-    
     // 1. Get all planned session objects for today and future
     const plannedSessions = sessions.filter(s => 
       s.status === "planned" && 
@@ -174,8 +175,8 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <AttendanceChart sessions={sessions ?? []} />
 
-        <Card className="shadow-sm border-gray-200 flex flex-col h-full">
-          <CardHeader className="flex flex-row items-center justify-between pb-4 border-b border-gray-50">
+        <Card className="flex flex-col h-full overflow-hidden">
+          <CardHeader className="flex flex-row items-center justify-between pb-4 bg-gray-50/30">
             <CardTitle className="text-lg font-bold text-gray-800">{t.dashboard.todaysSessions}</CardTitle>
             <Link href="/sessions" className="text-sm text-violet-600 font-semibold hover:underline flex items-center gap-1">
               {t.common.viewAll}
@@ -195,7 +196,7 @@ export default function DashboardPage() {
                 <p>{t.dashboard.noSessionsToday}</p>
               </div>
             ) : (
-              <div className="divide-y divide-gray-50 max-h-[450px] overflow-y-auto">
+              <div className="max-h-[450px] overflow-y-auto">
                 {displayedItems.map((item) => (
                   <div key={item.id} className="p-4 hover:bg-gray-50/50 transition-colors relative group">
                     <div className={`absolute left-0 top-0 bottom-0 w-1 transition-all group-hover:w-1.5 ${
@@ -270,8 +271,8 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         <RecentActivity sessions={sessions ?? []} />
 
-        <Card className="shadow-sm border-gray-200 flex flex-col">
-          <CardHeader className="flex flex-row items-center justify-between pb-4 border-b border-gray-50">
+        <Card className="flex flex-col overflow-hidden">
+          <CardHeader className="flex flex-row items-center justify-between pb-4 bg-gray-50/30">
             <CardTitle className="text-lg font-bold text-gray-800">{t.dashboard.upcoming}</CardTitle>
             <Link href="/sessions" className="text-sm text-violet-600 font-semibold hover:underline">
               {t.common.viewAll}
@@ -287,7 +288,7 @@ export default function DashboardPage() {
             ) : (
               <div className="mt-2 space-y-1">
                 {upcomingItems.map((s) => (
-                  <div key={s._id} className="flex items-center justify-between py-3 border-b border-gray-50 last:border-0 hover:bg-gray-50/30 px-2 rounded-lg transition-colors">
+                  <div key={s._id} className="flex items-center justify-between py-3 mb-1 hover:bg-gray-50/80 px-2 rounded-xl transition-colors">
                     <div className="flex items-center gap-3">
                       <div className="h-8 w-8 rounded-lg bg-violet-50 flex items-center justify-center text-violet-600">
                         <CalendarDays className="h-4 w-4" />

@@ -16,10 +16,13 @@ export default function StudentsPage() {
   const { user } = useAuth();
   const { t } = useTranslation();
   
-  const { data: students, isLoading: loadingStudents } = useApi<Student[]>("/students");
-  const { data: teacherSchedules, isLoading: loadingSchedules } = useApi<Schedule[]>(
+  const { data: studentsData, isLoading: loadingStudents } = useApi<{ data: Student[] }>("/students?limit=500");
+  const { data: teacherSchedulesData, isLoading: loadingSchedules } = useApi<{ data: Schedule[] }>(
     user?.id ? `/schedules/teacher/${user.id}` : null
   );
+
+  const students = studentsData?.data;
+  const teacherSchedules = teacherSchedulesData?.data;
 
   const [searchQuery, setSearchQuery] = useState("");
   const [yearFilter, setYearFilter] = useState("");
@@ -89,7 +92,7 @@ export default function StudentsPage() {
         </div>
 
         <div className="flex gap-4">
-          <div className="bg-white border border-gray-200 rounded-2xl p-4 flex items-center gap-4 shadow-sm min-w-[180px]">
+          <div className="bg-white/80 backdrop-blur-md border-0 rounded-[2rem] p-4 flex items-center gap-4 shadow-[0_8px_30px_rgb(0,0,0,0.04)] min-w-[180px]">
             <div className="h-10 w-10 rounded-xl bg-violet-50 flex items-center justify-center text-violet-600">
               <GraduationCap className="h-6 w-6" />
             </div>
@@ -98,7 +101,7 @@ export default function StudentsPage() {
               <div className="text-xs text-gray-400 font-bold uppercase tracking-wider">Filtered</div>
             </div>
           </div>
-          <div className="bg-white border border-gray-200 rounded-2xl p-4 flex items-center gap-4 shadow-sm min-w-[180px]">
+          <div className="bg-white/80 backdrop-blur-md border-0 rounded-[2rem] p-4 flex items-center gap-4 shadow-[0_8px_30px_rgb(0,0,0,0.04)] min-w-[180px]">
             <div className="h-10 w-10 rounded-xl bg-emerald-50 flex items-center justify-center text-emerald-600">
               <School className="h-6 w-6" />
             </div>
@@ -111,7 +114,7 @@ export default function StudentsPage() {
       </div>
 
       {/* Premium Search & Filter Controls */}
-      <div className="bg-white p-6 rounded-2xl border border-gray-200 shadow-sm space-y-6">
+      <div className="bg-white/80 backdrop-blur-md p-6 rounded-[2rem] border-0 shadow-[0_8px_30px_rgb(0,0,0,0.04)] space-y-6">
         <div className="flex flex-col xl:flex-row gap-4 items-center">
           <div className="relative flex-1 w-full">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
@@ -132,7 +135,7 @@ export default function StudentsPage() {
           </div>
           
           <div className="flex flex-wrap md:flex-nowrap gap-3 w-full xl:w-auto">
-            <div className="flex items-center gap-2 px-3 py-1 bg-violet-50/50 border border-violet-100 rounded-xl h-12">
+            <div className="flex items-center gap-2 px-3 py-1 bg-violet-50/50 border-0 rounded-xl h-12">
               <span className="text-xs font-bold text-violet-700 uppercase px-1">My Groups</span>
               <button
                 onClick={() => setShowOnlyMyStudents(!showOnlyMyStudents)}
@@ -149,7 +152,7 @@ export default function StudentsPage() {
             </div>
 
             <select
-              className="h-12 rounded-xl border border-gray-200 bg-white px-4 text-sm text-gray-700 outline-none focus:ring-2 focus:ring-violet-500/20 font-bold cursor-pointer min-w-[140px]"
+              className="h-12 rounded-2xl border-0 bg-gray-50/50 px-4 text-sm text-gray-700 outline-none focus:ring-2 focus:ring-violet-500/20 font-bold cursor-pointer min-w-[140px]"
               value={yearFilter}
               onChange={(e) => setYearFilter(e.target.value)}
             >
@@ -160,7 +163,7 @@ export default function StudentsPage() {
             </select>
             
             <select
-              className="h-12 rounded-xl border border-gray-200 bg-white px-4 text-sm text-gray-700 outline-none focus:ring-2 focus:ring-violet-500/20 font-bold cursor-pointer min-w-[140px]"
+              className="h-12 rounded-2xl border-0 bg-gray-50/50 px-4 text-sm text-gray-700 outline-none focus:ring-2 focus:ring-violet-500/20 font-bold cursor-pointer min-w-[140px]"
               value={groupFilter}
               onChange={(e) => setGroupFilter(e.target.value)}
             >
@@ -227,7 +230,7 @@ export default function StudentsPage() {
       </div>
 
       {/* Student Directory Table Container */}
-      <div className="rounded-2xl border border-gray-200 bg-white shadow-sm overflow-hidden">
+      <div className="rounded-[2rem] border-0 bg-white/80 backdrop-blur-md shadow-[0_8px_30px_rgb(0,0,0,0.04)] overflow-hidden">
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
@@ -337,7 +340,7 @@ export default function StudentsPage() {
                       {student.speciality}
                     </TableCell>
                     <TableCell className="text-right pr-6">
-                      <div className="inline-flex items-center gap-2 bg-gray-50 border border-gray-100 px-3 py-1.5 rounded-xl text-gray-400 font-mono text-[10px] group-hover:bg-white group-hover:border-violet-100 group-hover:text-violet-600 transition-all">
+                      <div className="inline-flex items-center gap-2 bg-gray-50 border-0 px-3 py-1.5 rounded-xl text-gray-400 font-mono text-[10px] group-hover:bg-white group-hover:text-violet-600 transition-all shadow-sm">
                         <svg 
                           xmlns="http://www.w3.org/2000/svg" 
                           width="24" height="24" 
@@ -362,7 +365,7 @@ export default function StudentsPage() {
         </div>
 
         {/* Premium Footer Info Panel */}
-        <div className="flex flex-col sm:flex-row items-center justify-between p-6 border-t border-gray-100 bg-gray-50/20 gap-4">
+        <div className="flex flex-col sm:flex-row items-center justify-between p-6 bg-gray-50/20 gap-4">
           <div className="text-sm font-medium text-gray-400">
             Showing <span className="text-gray-900 font-bold">{filteredStudents.length}</span> results 
             from <span className="text-gray-900 font-bold">{allStudents.length}</span> entries 

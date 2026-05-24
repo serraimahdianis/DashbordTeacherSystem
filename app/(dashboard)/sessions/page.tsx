@@ -10,16 +10,20 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTr
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { CalendarDays, Play, Eye, CheckCircle2, ChevronLeft, ChevronRight, Plus, Loader2, RotateCcw, Ban, Clock } from "lucide-react";
-import { parseISO } from "date-fns";
 import { formatDate } from "@/lib/utils";
 import { useApi, sessionsApi, modulesApi } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { useTranslation } from "@/lib/locale-context";
-import type { Session, Module } from "@/types/api";
-import { getModuleName } from "@/types/api";
+import type { Session, Module, Schedule } from "@/types/api";
 import { useSWRConfig } from "swr";
+import { isToday, parseISO } from "date-fns";
 
 type SessionTab = "upcoming" | "completed" | "canceled";
+
+// Extended session type for schedule-only entries that haven't been instantiated yet
+interface ScheduleSession extends Session {
+  isScheduleOnly?: boolean;
+}
 
 export default function SessionsPage() {
   const { user } = useAuth();
@@ -27,8 +31,25 @@ export default function SessionsPage() {
   const router = useRouter();
   const { mutate } = useSWRConfig();
   const swrKey = user?.id ? `/sessions/teacher/${user.id}` : null;
-  const { data: sessions, isLoading } = useApi<Session[]>(swrKey);
-  const { data: modules } = useApi<Module[]>(user?.id ? `/modules/teacher/${user.id}` : null);
+  const { data: sessionsData, isLoading: loadingSessions } = useApi<{ data: Session[] }>(swrKey);
+  const { data: modulesData } = useApi<{ data: Module[] }>(user?.id ? `/modules/teacher/${user.id}` : null);
+  const { data: schedulesData, isLoading: loadingSchedules } = useApi<{ data: Schedule[] }>(
+    user?.id ? `/schedules/teacher/${user.id}` : null
+  );
+
+  const sessions = sessionsData?.data;
+  const modules = modulesData?.data;
+  const schedules = schedulesData?.data;
+  const isLoading = loadingSessions || loadingSchedules;
+
+  const resolveModuleName = useMemo(() => {
+    return (modId: string | Module | undefined) => {
+      if (!modId) return "—";
+      if (typeof modId === "object" && modId.name) return modId.name;
+      const found = modules?.find((m) => m._id === modId);
+      return found ? found.name : (typeof modId === "string" ? modId : "—");
+    };
+  }, [modules]);
 
   const [activeTab, setActiveTab] = useState<SessionTab>("upcoming");
   const [moduleFilter, setModuleFilter] = useState(t.sessions.allModules);
@@ -105,13 +126,48 @@ export default function SessionsPage() {
 
   const allSessions = useMemo(() => sessions ?? [], [sessions]);
 
-  const upcomingSessions = useMemo(
-    () =>
-      allSessions
-        .filter((s) => s.status === "planned" || s.status === "active")
-        .sort((a, b) => a.date.localeCompare(b.date)),
-    [allSessions]
-  );
+  const upcomingSessions = useMemo(() => {
+    const list: ScheduleSession[] = [...allSessions.filter((s) => s.status === "planned" || s.status === "active")];
+    
+    if (schedules) {
+      const today = new Date();
+      const dayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+      const todayName = dayNames[today.getDay()];
+
+      // Get schedules for today
+      const todaySchedules = schedules.filter((s) => s.dayOfWeek === todayName);
+
+      todaySchedules.forEach((sch) => {
+        // Check if there is an existing session for today for this schedule
+        const sessionExists = allSessions.some(
+          (s) => s.scheduleId === sch._id && isToday(parseISO(s.date))
+        );
+
+        if (!sessionExists) {
+          list.push({
+            _id: sch._id,
+            scheduleId: sch._id,
+            teacherId: "",
+            moduleId: typeof sch.moduleId === "object" ? sch.moduleId._id : sch.moduleId,
+            type: sch.type,
+            group: sch.group,
+            date: today.toISOString(),
+            startTime: sch.startTime,
+            endTime: sch.endTime,
+            status: "planned",
+            isReplacement: false,
+            isScheduleOnly: true,
+          });
+        }
+      });
+    }
+
+    return list.sort((a, b) => {
+      const dateComp = a.date.localeCompare(b.date);
+      if (dateComp !== 0) return dateComp;
+      return a.startTime.localeCompare(b.startTime);
+    });
+  }, [allSessions, schedules]);
 
   const completedSessions = useMemo(
     () =>
@@ -136,12 +192,21 @@ export default function SessionsPage() {
       ? completedSessions
       : canceledSessions;
 
-  const moduleNames = [t.sessions.allModules, ...new Set(allSessions.map((s) => getModuleName(s.moduleId)))];
+  const moduleNames = useMemo(() => {
+    const names = allSessions.map((s) => resolveModuleName(s.moduleId));
+    if (schedules) {
+      schedules.forEach((sch) => {
+        names.push(resolveModuleName(sch.moduleId));
+      });
+    }
+    return [t.sessions.allModules, ...new Set(names.filter(Boolean))];
+  }, [allSessions, schedules, resolveModuleName, t.sessions.allModules]);
 
-  const filteredSessions =
-    moduleFilter === t.sessions.allModules
+  const filteredSessions = useMemo(() => {
+    return moduleFilter === t.sessions.allModules
       ? displayedSessions
-      : displayedSessions.filter((s) => getModuleName(s.moduleId) === moduleFilter);
+      : displayedSessions.filter((s) => resolveModuleName(s.moduleId) === moduleFilter);
+  }, [displayedSessions, moduleFilter, t.sessions.allModules, resolveModuleName]);
 
   const getTypeBadgeClass = (type: string) => {
     if (type === "td") return "bg-emerald-50 text-emerald-600 border-transparent font-bold";
@@ -245,7 +310,7 @@ export default function SessionsPage() {
                   <Label className="text-sm font-semibold text-gray-700">Year <span className="text-red-500">*</span></Label>
                   <select
                     required
-                    className="w-full h-10 rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 outline-none focus:ring-2 focus:ring-violet-500"
+                    className="w-full h-11 rounded-2xl border-0 bg-gray-50/50 px-4 py-2 text-sm text-gray-700 outline-none focus:ring-2 focus:ring-violet-500 transition-all"
                     value={moduleForm.year}
                     onChange={(e) => setModuleForm((p) => ({ ...p, year: e.target.value }))}
                   >
@@ -294,7 +359,7 @@ export default function SessionsPage() {
                 <Label className="text-sm font-semibold text-gray-700">{t.sessions.module} <span className="text-red-500">*</span></Label>
                 <select
                   required
-                  className="w-full h-10 rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 outline-none focus:ring-2 focus:ring-violet-500"
+                  className="w-full h-11 rounded-2xl border-0 bg-gray-50/50 px-4 py-2 text-sm text-gray-700 outline-none focus:ring-2 focus:ring-violet-500 transition-all"
                   value={form.moduleId}
                   onChange={(e) => setForm((p) => ({ ...p, moduleId: e.target.value }))}
                 >
@@ -309,7 +374,7 @@ export default function SessionsPage() {
                 <Label className="text-sm font-semibold text-gray-700">{t.sessions.type} <span className="text-red-500">*</span></Label>
                 <select
                   required
-                  className="w-full h-10 rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 outline-none focus:ring-2 focus:ring-violet-500"
+                  className="w-full h-11 rounded-2xl border-0 bg-gray-50/50 px-4 py-2 text-sm text-gray-700 outline-none focus:ring-2 focus:ring-violet-500 transition-all"
                   value={form.type}
                   onChange={(e) => setForm((p) => ({ ...p, type: e.target.value }))}
                 >
@@ -424,7 +489,7 @@ export default function SessionsPage() {
         </div>
         <div className="mb-2">
           <select
-            className="h-9 rounded-md border border-gray-200 bg-white px-3 text-sm font-medium text-gray-600 outline-none focus:ring-2 focus:ring-violet-500 min-w-[150px]"
+            className="h-9 rounded-full border-0 bg-gray-50/50 px-3 text-sm font-medium text-gray-600 outline-none focus:ring-2 focus:ring-violet-500 min-w-[150px]"
             value={moduleFilter}
             onChange={(e) => setModuleFilter(e.target.value)}
           >
@@ -437,8 +502,8 @@ export default function SessionsPage() {
 
       {/* Session Table */}
       <div className="flex flex-col gap-6">
-        <div className={`bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden border-l-4 ${tabConfig.borderColor}`}>
-          <div className="p-5 border-b border-gray-100 flex items-center gap-3">
+        <div className={`bg-white/80 backdrop-blur-md rounded-[2rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] overflow-hidden border-l-4 ${tabConfig.borderColor}`}>
+          <div className="p-5 flex items-center gap-3 bg-gray-50/30">
             {tabConfig.icon}
             <h2 className={`text-lg font-bold ${tabConfig.titleColor}`}>{tabConfig.title}</h2>
             <div className={`font-bold text-xs h-5 w-5 rounded-full flex items-center justify-center ${tabConfig.countBg}`}>
@@ -480,7 +545,7 @@ export default function SessionsPage() {
                       className={`border-b border-gray-100 hover:bg-gray-50/50 ${session.status === "canceled" ? "opacity-60" : ""}`}
                     >
                       <TableCell className={`font-semibold py-4 ${session.status === "canceled" ? "text-gray-400 line-through" : "text-gray-900"}`}>
-                        {getModuleName(session.moduleId)}
+                        {resolveModuleName(session.moduleId)}
                       </TableCell>
                       <TableCell>
                         <Badge variant="outline" className={getTypeBadgeClass(session.type)}>
@@ -515,9 +580,15 @@ export default function SessionsPage() {
                             className="bg-violet-600 hover:bg-violet-700 text-white font-medium h-8 px-3 gap-1.5 text-xs"
                             onClick={async () => {
                               try {
-                                await sessionsApi.updateStatus(session._id, "active");
+                                let activeSessionId = session._id;
+                                if ((session as ScheduleSession).isScheduleOnly) {
+                                  const res = await sessionsApi.startFromSchedule(session.scheduleId!);
+                                  activeSessionId = res._id;
+                                } else {
+                                  await sessionsApi.updateStatus(session._id, "active");
+                                }
                                 await mutate(swrKey);
-                                router.push(`/sessions/${session._id}/live`);
+                                router.push(`/sessions/${activeSessionId}/live`);
                               } catch (e) {
                                 console.error(e);
                               }

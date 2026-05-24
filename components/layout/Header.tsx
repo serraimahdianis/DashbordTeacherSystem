@@ -13,7 +13,7 @@ export function Header() {
     : "?";
 
   return (
-    <header className="sticky top-0 z-30 flex h-16 w-full items-center justify-between border-b border-gray-200 bg-white px-4 md:px-6 shadow-sm">
+    <header className="sticky top-0 z-30 flex h-16 w-full items-center justify-between border-b-0 bg-white/80 backdrop-blur-md px-4 md:px-6 shadow-[0_2px_10px_rgb(0,0,0,0.02)]">
       <div className="flex items-center gap-4">
         <h2 className="text-lg font-semibold text-gray-800">Smart Attendance</h2>
       </div>
@@ -23,7 +23,7 @@ export function Header() {
           {currentDate}
         </div>
 
-        <div className="flex items-center gap-3 border-l border-gray-200 pl-4 md:pl-6">
+        <div className="flex items-center gap-3 pl-4 md:pl-6">
           <Avatar className="h-8 w-8">
             <AvatarFallback className="bg-violet-100 text-violet-700 font-bold text-sm">
               {initials}

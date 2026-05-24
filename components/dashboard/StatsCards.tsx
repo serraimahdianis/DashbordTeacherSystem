@@ -27,7 +27,7 @@ function StatCard({
   unit: string;
 }) {
   return (
-    <Card className={`border ${color.replace("bg-", "border-").replace("-500", "-100").replace("-600", "-100")} shadow-sm overflow-hidden`}>
+    <Card className="overflow-hidden">
       <div className={`h-1 w-full ${color}`} />
       <CardContent className="p-4 md:p-6">
         <div className="flex items-center gap-3 mb-4">
@@ -49,14 +49,14 @@ export function StatsCards({ sessions, schedules }: StatsCardsProps) {
   const { t } = useTranslation();
 
   const todaySessions = useMemo(
-    () => sessions.filter((s) => isToday(parseISO(s.date))),
+    () => (Array.isArray(sessions) ? sessions.filter((s) => isToday(parseISO(s.date))) : []),
     [sessions]
   );
 
   const todaySchedules = useMemo(() => {
     const dayNames = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
     const todayName = dayNames[new Date().getDay()];
-    return schedules.filter((s) => s.dayOfWeek === todayName);
+    return Array.isArray(schedules) ? schedules.filter((s) => s.dayOfWeek === todayName) : [];
   }, [schedules]);
 
   // Aggregate attendance from ALL active + closed sessions today
@@ -66,16 +66,11 @@ export function StatsCards({ sessions, schedules }: StatsCardsProps) {
   );
 
   const [allRecords, setAllRecords] = useState<AttendanceRecord[]>([]);
-  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (todaySessionsWithData.length === 0) {
-      setAllRecords([]);
-      return;
-    }
+    if (todaySessionsWithData.length === 0) return;
 
     let cancelled = false;
-    setLoading(true);
 
     const fetchAll = async () => {
       try {
@@ -84,13 +79,9 @@ export function StatsCards({ sessions, schedules }: StatsCardsProps) {
             axiosInstance.get<AttendanceRecord[]>(`/attendance/session/${s._id}`).then((r) => r.data)
           )
         );
-        if (!cancelled) {
-          setAllRecords(results.flat());
-        }
+        if (!cancelled) setAllRecords(results.flat());
       } catch {
         if (!cancelled) setAllRecords([]);
-      } finally {
-        if (!cancelled) setLoading(false);
       }
     };
 
@@ -113,7 +104,7 @@ export function StatsCards({ sessions, schedules }: StatsCardsProps) {
   }, [todaySessions, todaySchedules]);
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 ">
       <StatCard color="bg-emerald-500" icon={CheckCircle2} label={t.dashboard.presentToday} value={present} unit={t.common.students} />
       <StatCard color="bg-red-500" icon={XCircle} label={t.dashboard.absentToday} value={absent} unit={t.common.students} />
       <StatCard color="bg-amber-500" icon={Clock} label={t.dashboard.lateToday} value={late} unit={t.common.students} />

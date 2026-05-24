@@ -51,14 +51,14 @@ export default function SettingsPage() {
         <p className="text-gray-500 mt-1">{t.settings.subtitle}</p>
       </div>
 
-      <Card className="shadow-sm border-gray-200">
+      <Card>
         <CardHeader>
           <CardTitle>{t.settings.profileInfo}</CardTitle>
           <CardDescription>{t.settings.profileDesc}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           {error && (
-            <div className="p-3 bg-red-50 text-red-600 text-sm rounded-md border border-red-100">
+            <div className="p-3 bg-red-50 text-red-600 text-sm rounded-2xl">
               {error}
             </div>
           )}
@@ -101,7 +101,7 @@ export default function SettingsPage() {
         </CardContent>
       </Card>
 
-      <Card className="shadow-sm border-gray-200">
+      <Card>
         <CardHeader>
           <CardTitle>{t.settings.changePassword}</CardTitle>
           <CardDescription>{t.settings.passwordDesc}</CardDescription>
@@ -136,7 +136,7 @@ export default function SettingsPage() {
               />
             </div>
 
-            <div className="bg-gray-50 rounded-lg p-4 space-y-2 mt-4">
+            <div className="bg-gray-50/50 rounded-2xl p-4 space-y-2 mt-4">
               <p className="text-sm font-medium text-gray-900">{t.settings.requirements}:</p>
               <ul className="text-sm text-gray-600 space-y-1">
                 {[

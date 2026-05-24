@@ -13,17 +13,17 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       <button
         ref={ref}
         className={cn(
-          "inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
+          "inline-flex items-center justify-center whitespace-nowrap rounded-full text-sm font-medium ring-offset-white transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50",
           {
             "bg-violet-600 text-white hover:bg-violet-700": variant === "default",
             "bg-red-500 text-white hover:bg-red-600": variant === "destructive",
-            "border border-gray-200 bg-white hover:bg-gray-100 hover:text-gray-900": variant === "outline",
+            "bg-violet-50 text-violet-700 hover:bg-violet-100": variant === "outline",
             "bg-gray-100 text-gray-900 hover:bg-gray-200": variant === "secondary",
             "hover:bg-gray-100 hover:text-gray-900": variant === "ghost",
             "text-violet-600 underline-offset-4 hover:underline": variant === "link",
             "h-10 px-4 py-2": size === "default",
-            "h-9 rounded-md px-3": size === "sm",
-            "h-11 rounded-md px-8": size === "lg",
+            "h-9 px-3": size === "sm",
+            "h-11 px-8": size === "lg",
             "h-10 w-10": size === "icon",
           },
           className

@@ -1,7 +1,6 @@
 "use client";
 
 import { useMemo } from "react";
-import { parseISO } from "date-fns";
 import { formatDate } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CheckCircle2, XCircle, Clock } from "lucide-react";
@@ -19,19 +18,23 @@ export function RecentActivity({ sessions }: RecentActivityProps) {
   const { t } = useTranslation();
 
   const recentSession = useMemo(
-    () =>
-      [...sessions]
+    () => {
+      if (!Array.isArray(sessions)) return null;
+      return [...sessions]
         .filter((s) => s.status === "active" || s.status === "closed")
-        .sort((a, b) => b.date.localeCompare(a.date))[0] ?? null,
+        .sort((a, b) => b.date.localeCompare(a.date))[0] ?? null;
+    },
     [sessions]
   );
 
-  const { data: records } = useApi<AttendanceRecord[]>(
+  const { data: recordsData } = useApi<{ data: AttendanceRecord[] }>(
     recentSession ? `/attendance/session/${recentSession._id}` : null
   );
 
+  const records = recordsData?.data;
+
   const recentScans = useMemo(() => {
-    if (!records) return [];
+    if (!Array.isArray(records)) return [];
     return [...records]
       .filter((r) => r.scanTime !== null)
       .sort((a, b) => {
@@ -43,7 +46,7 @@ export function RecentActivity({ sessions }: RecentActivityProps) {
   }, [records]);
 
   return (
-    <Card className="shadow-sm border-gray-200">
+    <Card>
       <CardHeader className="flex flex-row items-center justify-between pb-2">
         <CardTitle className="text-lg font-bold text-gray-800">{t.dashboard.recentActivity}</CardTitle>
         <Link href="/sessions" className="text-sm text-violet-600 font-medium hover:underline">

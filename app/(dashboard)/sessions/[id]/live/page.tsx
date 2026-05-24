@@ -10,7 +10,6 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Input } from "@/components/ui/input";
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip } from "recharts";
-import { QRCodeCanvas } from "qrcode.react";
 import {
   ArrowLeft,
   Square,
@@ -22,19 +21,20 @@ import {
   CreditCard,
   CheckCircle2,
   XCircle,
-  QrCode,
   Loader2,
 } from "lucide-react";
-import { parseISO } from "date-fns";
-import { formatDate } from "@/lib/utils";
+import { parseISO, format } from "date-fns";
 import { fetcher, usePolling, studentsApi, attendanceApi, sessionsApi } from "@/lib/api";
 import {
+  getSocket,
   connectSocket,
   joinSessionRoom,
   leaveSessionRoom,
+  on,
+  off,
 } from "@/lib/socket";
 import { useTranslation } from "@/lib/locale-context";
-import type { Session, AttendanceRecord, AttendanceStatus } from "@/types/api";
+import type { Session, AttendanceRecord, AttendanceStatus, Student } from "@/types/api";
 import { getModuleName, getStudentName, getStudentId } from "@/types/api";
 
 type StatusFilter = "all" | "present" | "late" | "absent";
@@ -59,7 +59,7 @@ export default function LiveSessionPage() {
   const [scanLoading, setScanLoading] = useState(false);
   const [scanMsg, setScanMsg] = useState<{ text: string; ok: boolean } | null>(null);
   const [endingSession, setEndingSession] = useState(false);
-  const [showQr, setShowQr] = useState(false);
+
   const [changingStatusId, setChangingStatusId] = useState<string | null>(null);
   const isMounted = useSyncExternalStore(
     () => () => {},
@@ -74,6 +74,8 @@ export default function LiveSessionPage() {
     const interval = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(interval);
   }, []);
+
+
 
   // Calculate elapsed time from session start
   const elapsedTime = useMemo(() => {
@@ -93,17 +95,17 @@ export default function LiveSessionPage() {
     return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
   };
 
-  // Socket.IO: connect to session room on mount
+  // WebSocket: connect to session room on mount
   useEffect(() => {
-    const socket = connectSocket();
+    connectSocket();
 
     const onScan = (payload: {
-      sessionId: string;
-      studentId: string;
-      studentName: string;
-      status: string;
-      scanTime: string;
-    }) => {
+    sessionId: string;
+    studentId: string;
+    studentName: string;
+    status: string;
+    scanTime: string;
+  }) => {
       setRecords((prev) => {
         const existingIdx = prev.findIndex(
           (r) => getStudentId(r.studentId) === payload.studentId
@@ -120,9 +122,9 @@ export default function LiveSessionPage() {
         return [
           ...prev,
           {
-            _id: `socket-${payload.studentId}-${Date.now()}`,
+            _id: `ws-${payload.studentId}-${Date.now()}`,
             sessionId,
-            studentId: payload.studentId as any,
+            studentId: { _id: payload.studentId, fullName: payload.studentName } as unknown as Student,
             status: payload.status as AttendanceStatus,
             scanTime: payload.scanTime,
           },
@@ -148,19 +150,26 @@ export default function LiveSessionPage() {
       mutateSession();
     };
 
-    const onConnect = () => setSocketOnline(true);
-    const onDisconnect = () => setSocketOnline(false);
+    on("attendance:scan", onScan);
+    on("attendance:status-changed", onStatusChanged);
+    on("session:ended", onSessionEnded);
 
-    socket.on("connect", onConnect);
-    socket.on("disconnect", onDisconnect);
-    socket.on("attendance:scan", onScan);
-    socket.on("attendance:status-changed", onStatusChanged);
-    socket.on("session:ended", onSessionEnded);
+    // Track socket status: check periodically instead of relying on
+    // addEventListener on a single socket ref (which breaks on reconnects).
+    const statusInterval = setInterval(() => {
+      const sock = getSocket();
+      const isOpen = sock !== null && sock.readyState === WebSocket.OPEN;
+      setSocketOnline(isOpen);
+    }, 2000);
 
-    // Fetch initial attendance data
-    fetcher(`/attendance/session/${sessionId}`)
+    // The statusInterval will pick up the initial online status on its first tick.
+    // To avoid synchronous setState in useEffect, we just let the interval handle it,
+    // or trigger it asynchronously if we really need it immediately.
+
+    // Fetch initial attendance data with high limit to retrieve all students
+    fetcher(`/attendance/session/${sessionId}?limit=1000`)
       .then((data) => {
-        const list = Array.isArray(data) ? data : data?.attendance ?? [];
+        const list = Array.isArray(data) ? data : data?.data ?? [];
         setRecords(list);
       })
       .catch(() => {});
@@ -168,11 +177,10 @@ export default function LiveSessionPage() {
     joinSessionRoom(sessionId);
 
     return () => {
-      socket.off("connect", onConnect);
-      socket.off("disconnect", onDisconnect);
-      socket.off("attendance:scan", onScan);
-      socket.off("attendance:status-changed", onStatusChanged);
-      socket.off("session:ended", onSessionEnded);
+      off("attendance:scan", onScan);
+      off("attendance:status-changed", onStatusChanged);
+      off("session:ended", onSessionEnded);
+      clearInterval(statusInterval);
       leaveSessionRoom(sessionId);
     };
   }, [sessionId, mutateSession]);
@@ -182,8 +190,8 @@ export default function LiveSessionPage() {
     if (socketOnline) return;
     const interval = setInterval(async () => {
       try {
-        const data = await fetcher(`/attendance/session/${sessionId}`);
-        const list = Array.isArray(data) ? data : data?.attendance ?? [];
+        const data = await fetcher(`/attendance/session/${sessionId}?limit=1000`);
+        const list = Array.isArray(data) ? data : data?.data ?? [];
         setRecords(list);
       } catch {}
     }, 5000);
@@ -215,7 +223,7 @@ export default function LiveSessionPage() {
   const recentScans = useMemo(
     () =>
       [...records]
-        .filter((r) => r.scanTime !== null)
+        .filter((r) => r.scanTime !== null && r.scanTime !== undefined)
         .sort((a, b) => {
           const ta = a.scanTime ? new Date(a.scanTime).getTime() : 0;
           const tb = b.scanTime ? new Date(b.scanTime).getTime() : 0;
@@ -282,6 +290,7 @@ export default function LiveSessionPage() {
           studentId,
           status: newStatus,
           scanTime: newStatus === "absent" ? undefined : new Date().toISOString(),
+          method: "MANUAL",
         });
       } catch (err) {
         console.error("Failed to update status:", err);
@@ -379,7 +388,7 @@ export default function LiveSessionPage() {
 
       {/* Session info + stats */}
       <div className="flex flex-col xl:flex-row gap-6">
-        <Card className="flex-1 border-gray-200 shadow-sm">
+        <Card className="flex-1">
           <CardContent className="p-5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 h-full">
             <div className="flex items-center gap-4">
               <div className="h-16 w-16 rounded-xl bg-violet-100 flex items-center justify-center text-violet-600 shrink-0">
@@ -426,7 +435,7 @@ export default function LiveSessionPage() {
             { icon: UserX, color: "text-red-500", label: t.live.absent, val: absentCount },
             { icon: Users, color: "text-violet-600", label: t.live.total, val: totalCount },
           ].map(({ icon: Icon, color, label, val }) => (
-            <Card key={label} className="border-gray-200 shadow-sm flex flex-col justify-center px-6 py-4 xl:min-w-[130px]">
+            <Card key={label} className="flex flex-col justify-center px-6 py-4 xl:min-w-[130px]">
               <div className="flex justify-between items-start">
                 <Icon className={`h-6 w-6 ${color}`} />
                 <span className="text-3xl font-bold text-gray-900 leading-none">{val}</span>
@@ -440,8 +449,8 @@ export default function LiveSessionPage() {
       {/* Table + Sidebar */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Attendance table */}
-        <Card className="lg:col-span-2 border-gray-200 shadow-sm overflow-hidden flex flex-col">
-          <div className="p-4 border-b border-gray-100 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+        <Card className="lg:col-span-2 overflow-hidden flex flex-col">
+          <div className="p-4 bg-gray-50/30 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <h3 className="text-lg font-bold text-gray-900">{t.live.students}</h3>
             <div className="flex gap-3 w-full sm:w-auto">
               <div className="relative flex-1 sm:w-64">
@@ -454,7 +463,7 @@ export default function LiveSessionPage() {
                 />
               </div>
               <select
-                className="h-9 rounded-md border border-gray-200 bg-white px-3 text-sm font-medium text-gray-600 outline-none focus:ring-2 focus:ring-violet-500"
+                className="h-9 rounded-full border-0 bg-gray-50/50 px-3 text-sm font-medium text-gray-600 outline-none focus:ring-2 focus:ring-violet-500"
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value as StatusFilter)}
               >
@@ -526,62 +535,17 @@ export default function LiveSessionPage() {
               </TableBody>
             </Table>
           </div>
-          <div className="flex justify-between items-center p-4 border-t border-gray-100 text-sm text-gray-500">
+          <div className="flex justify-between items-center p-4 text-sm text-gray-500 bg-gray-50/10">
             <div>{filteredAttendance.length} / {totalCount} {t.common.students}</div>
           </div>
         </Card>
 
         {/* Right sidebar */}
         <div className="space-y-6">
-          {/* QR Attendance */}
-          <Card className="border-gray-200 shadow-sm overflow-hidden">
-            <CardHeader className="pb-2 pt-5">
-              <CardTitle className="text-base font-bold text-gray-900">{t.live.qrAttendance}</CardTitle>
-            </CardHeader>
-            <CardContent className="flex flex-col items-center pb-6">
-              {!showQr ? (
-                <div className="flex flex-col items-center py-4">
-                  <div className="h-20 w-20 rounded-2xl bg-violet-50 flex items-center justify-center text-violet-600 mb-4 border border-violet-100">
-                    <QrCode className="h-10 w-10" />
-                  </div>
-                  <Button
-                    onClick={() => setShowQr(true)}
-                    className="bg-violet-600 hover:bg-violet-700 gap-2"
-                    disabled={isSessionEnded}
-                  >
-                    <QrCode className="h-4 w-4" />
-                    {t.live.showQr}
-                  </Button>
-                </div>
-              ) : (
-                <div className="flex flex-col items-center w-full">
-                  <div className="p-4 bg-white rounded-xl shadow-inner border border-gray-100 mb-4">
-                    <QRCodeCanvas
-                      value={JSON.stringify({ sessionId, type: "attendance_auth" })}
-                      size={200}
-                      level="H"
-                      includeMargin={true}
-                      fgColor="#000000"
-                      bgColor="#ffffff"
-                    />
-                  </div>
-                  <p className="text-xs text-center text-gray-500 mb-4 px-4">
-                    {t.live.qrInstructions}
-                  </p>
-                  <Button
-                    variant="outline"
-                    onClick={() => setShowQr(false)}
-                    className="w-full text-xs h-8"
-                  >
-                    {t.live.hideQr}
-                  </Button>
-                </div>
-              )}
-            </CardContent>
-          </Card>
+
 
           {/* RFID Scanner */}
-          <Card className="border-gray-200 shadow-sm overflow-hidden">
+          <Card className="overflow-hidden">
             <CardHeader className="flex flex-row items-center justify-between pb-0 pt-5">
               <CardTitle className="text-base font-bold text-gray-900">{t.live.rfidOnly}</CardTitle>
               <div className="flex items-center gap-1.5 text-xs font-semibold text-emerald-600">
@@ -627,7 +591,7 @@ export default function LiveSessionPage() {
           </Card>
 
           {/* Recent Scans */}
-          <Card className="border-gray-200 shadow-sm">
+          <Card>
             <CardHeader className="flex flex-row items-center justify-between pb-2 pt-4">
               <CardTitle className="text-sm font-bold text-gray-900">{t.live.recentScans}</CardTitle>
             </CardHeader>
@@ -664,7 +628,7 @@ export default function LiveSessionPage() {
           </Card>
 
           {/* Pie chart summary */}
-          <Card className="border-gray-200 shadow-sm">
+          <Card>
             <CardHeader className="pb-0 pt-4">
               <CardTitle className="text-sm font-bold text-gray-900">{t.live.attendanceSummary}</CardTitle>
             </CardHeader>

@@ -98,7 +98,7 @@ export function Sidebar() {
           <span className="ml-auto text-xs font-bold text-violet-600">{LANG_LABELS[locale]}</span>
         </button>
         {showLangMenu && (
-          <div className="absolute bottom-full left-4 right-4 mb-1 bg-white rounded-xl border border-gray-100 shadow-lg overflow-hidden z-50">
+          <div className="absolute bottom-full left-4 right-4 mb-1 bg-white rounded-[2rem] border-0 shadow-[0_8px_30px_rgb(0,0,0,0.08)] overflow-hidden z-50">
             {(["en", "fr", "ar"] as const).map((lng) => (
               <button
                 key={lng}
@@ -118,7 +118,7 @@ export function Sidebar() {
 
       {/* User profile + logout */}
       <div className="p-4 mb-2">
-        <div className="flex items-center justify-between rounded-xl border border-gray-100 p-3 bg-gray-50">
+        <div className="flex items-center justify-between rounded-2xl border-0 shadow-[0_2px_10px_rgb(0,0,0,0.04)] p-3 bg-white">
           <div className="flex items-center gap-3 min-w-0">
             <Avatar className="h-9 w-9 border border-gray-200 shrink-0">
               <AvatarFallback className="bg-violet-100 text-violet-700 font-bold text-sm">
@@ -163,7 +163,7 @@ export function Sidebar() {
       {/* Mobile sidebar */}
       <aside
         className={cn(
-          "fixed left-0 top-0 z-40 flex h-screen w-[260px] flex-col border-r border-gray-100 bg-white transition-transform md:translate-x-0",
+          "fixed left-0 top-0 z-40 flex h-screen w-[260px] flex-col border-r-0 shadow-[4px_0_24px_rgba(0,0,0,0.02)] bg-white transition-transform md:translate-x-0",
           mobileOpen ? "translate-x-0" : "-translate-x-full"
         )}
       >
@@ -171,7 +171,7 @@ export function Sidebar() {
       </aside>
 
       {/* Desktop sidebar */}
-      <aside className="hidden md:flex fixed left-0 top-0 z-40 h-screen w-[260px] flex-col border-r border-gray-100 bg-white">
+      <aside className="hidden md:flex fixed left-0 top-0 z-40 h-screen w-[260px] flex-col border-r-0 shadow-[4px_0_24px_rgba(0,0,0,0.02)] bg-white">
         {sidebarContent}
       </aside>
     </>

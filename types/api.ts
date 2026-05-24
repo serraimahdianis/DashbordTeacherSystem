@@ -126,6 +126,7 @@ export interface ScanPayload {
   studentId: string;
   status: AttendanceStatus;
   scanTime?: string;
+  method?: "RFID" | "QR" | "MANUAL";
 }
 
 // Helper to extract module name from populated or unpopulated field

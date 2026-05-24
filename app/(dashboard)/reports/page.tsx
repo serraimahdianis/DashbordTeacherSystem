@@ -6,7 +6,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Download, FileText, BookOpen, Users, TrendingUp, Printer } from "lucide-react";
-import { parseISO } from "date-fns";
+import { parseISO, format } from "date-fns";
 import { formatDate } from "@/lib/utils";
 import { useApi } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
@@ -16,7 +16,9 @@ import { getModuleName, getStudentName } from "@/types/api";
 
 function ReportAttendanceTable({ sessionId }: { sessionId: string }) {
   const { t } = useTranslation();
-  const { data: records, isLoading } = useApi<AttendanceRecord[]>(`/attendance/session/${sessionId}`);
+  const { data: recordsData, isLoading } = useApi<{ data: AttendanceRecord[] }>(`/attendance/session/${sessionId}`);
+
+  const records = recordsData?.data;
 
   const attendance = records ?? [];
   const presentCount = attendance.filter((r) => r.status === "present").length;
@@ -106,9 +108,10 @@ function ReportAttendanceTable({ sessionId }: { sessionId: string }) {
 export default function ReportsPage() {
   const { user } = useAuth();
   const { t } = useTranslation();
-  const { data: sessions, isLoading } = useApi<Session[]>(
+  const { data: sessionsData, isLoading } = useApi<{ data: Session[] }>(
     user?.id ? `/sessions/teacher/${user.id}` : null
   );
+  const sessions = sessionsData?.data;
   const [exporting, setExporting] = useState(false);
   const [selectedSession, setSelectedSession] = useState<Session | null>(null);
 

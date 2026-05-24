@@ -32,8 +32,11 @@ export default function SchedulePage() {
   const { mutate } = useSWRConfig();
   const swrKey = user?.id ? `/schedules/teacher/${user.id}` : null;
 
-  const { data: schedules, isLoading } = useApi<Schedule[]>(swrKey);
-  const { data: modules } = useApi<Module[]>(user?.id ? `/modules/teacher/${user.id}` : null);
+  const { data: schedulesData, isLoading } = useApi<{ data: Schedule[] }>(swrKey);
+  const { data: modulesData } = useApi<{ data: Module[] }>(user?.id ? `/modules/teacher/${user.id}` : null);
+
+  const schedules = schedulesData?.data;
+  const modules = modulesData?.data;
 
   const [typeFilter, setTypeFilter] = useState(t.schedule.allTypes);
   const [yearFilter, setYearFilter] = useState(t.schedule.allYears);
@@ -196,7 +199,7 @@ export default function SchedulePage() {
                   <Label className="text-sm font-semibold text-gray-700">Year <span className="text-red-500">*</span></Label>
                   <select
                     required
-                    className="w-full h-10 rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 outline-none focus:ring-2 focus:ring-violet-500"
+                    className="w-full h-11 rounded-2xl border-0 bg-gray-50/50 px-4 py-2 text-sm text-gray-700 outline-none focus:ring-2 focus:ring-violet-500 transition-all"
                     value={moduleForm.year}
                     onChange={(e) => setModuleForm((p) => ({ ...p, year: e.target.value }))}
                   >
@@ -245,7 +248,7 @@ export default function SchedulePage() {
                 <Label className="text-sm font-semibold text-gray-700">{t.schedule.moduleName} <span className="text-red-500">*</span></Label>
                 <select
                   required
-                  className="w-full h-10 rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 outline-none focus:ring-2 focus:ring-violet-500"
+                  className="w-full h-11 rounded-2xl border-0 bg-gray-50/50 px-4 py-2 text-sm text-gray-700 outline-none focus:ring-2 focus:ring-violet-500 transition-all"
                   value={form.moduleId}
                   onChange={(e) => setForm((p) => ({ ...p, moduleId: e.target.value }))}
                 >
@@ -260,7 +263,7 @@ export default function SchedulePage() {
                 <Label className="text-sm font-semibold text-gray-700">{t.sessions.type} <span className="text-red-500">*</span></Label>
                 <select
                   required
-                  className="w-full h-10 rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 outline-none focus:ring-2 focus:ring-violet-500"
+                  className="w-full h-11 rounded-2xl border-0 bg-gray-50/50 px-4 py-2 text-sm text-gray-700 outline-none focus:ring-2 focus:ring-violet-500 transition-all"
                   value={form.type}
                   onChange={(e) => setForm((p) => ({ ...p, type: e.target.value }))}
                 >
@@ -275,7 +278,7 @@ export default function SchedulePage() {
                 <Label className="text-sm font-semibold text-gray-700">{t.schedule.year} <span className="text-red-500">*</span></Label>
                 <select
                   required
-                  className="w-full h-10 rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 outline-none focus:ring-2 focus:ring-violet-500"
+                  className="w-full h-11 rounded-2xl border-0 bg-gray-50/50 px-4 py-2 text-sm text-gray-700 outline-none focus:ring-2 focus:ring-violet-500 transition-all"
                   value={form.year}
                   onChange={(e) => setForm((p) => ({ ...p, year: e.target.value }))}
                 >
@@ -302,7 +305,7 @@ export default function SchedulePage() {
                 <Label className="text-sm font-semibold text-gray-700">{t.schedule.day} <span className="text-red-500">*</span></Label>
                 <select
                   required
-                  className="w-full h-10 rounded-md border border-gray-200 bg-white px-3 py-2 text-sm text-gray-700 outline-none focus:ring-2 focus:ring-violet-500"
+                  className="w-full h-11 rounded-2xl border-0 bg-gray-50/50 px-4 py-2 text-sm text-gray-700 outline-none focus:ring-2 focus:ring-violet-500 transition-all"
                   value={form.dayOfWeek}
                   onChange={(e) => setForm((p) => ({ ...p, dayOfWeek: e.target.value }))}
                 >
@@ -375,8 +378,8 @@ export default function SchedulePage() {
       </div>
 
       {/* Filters */}
-      <div className="bg-white border border-gray-200 rounded-xl shadow-sm overflow-hidden flex flex-col">
-        <div className="p-4 border-b border-gray-100 flex flex-wrap gap-3 items-center justify-between">
+      <div className="bg-white/80 backdrop-blur-md border-0 rounded-[2rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)] overflow-hidden flex flex-col">
+        <div className="p-4 bg-gray-50/30 flex flex-wrap gap-3 items-center justify-between">
           <div className="flex flex-wrap gap-3">
             {[
               { value: typeFilter, onChange: setTypeFilter, opts: [t.schedule.allTypes, "cours", "td", "tp"] },
@@ -385,7 +388,7 @@ export default function SchedulePage() {
             ].map((sel, i) => (
               <select
                 key={i}
-                className="h-9 rounded-md border border-gray-200 bg-white px-3 text-sm font-medium text-gray-600 outline-none focus:ring-2 focus:ring-violet-500 min-w-[120px]"
+                className="h-9 rounded-full border-0 bg-gray-50/50 px-3 text-sm font-medium text-gray-600 outline-none focus:ring-2 focus:ring-violet-500 min-w-[120px]"
                 value={sel.value}
                 onChange={(e) => sel.onChange(e.target.value)}
               >
@@ -482,8 +485,8 @@ export default function SchedulePage() {
       </div>
 
       {/* Info box */}
-      <div className="bg-gray-50 border border-gray-200 rounded-xl p-4 flex gap-4 items-start max-w-2xl">
-        <div className="h-10 w-10 shrink-0 bg-white border border-gray-200 rounded-lg flex items-center justify-center text-violet-600 shadow-sm">
+      <div className="bg-gray-50/50 border-0 shadow-[0_2px_10px_rgb(0,0,0,0.02)] rounded-[2rem] p-4 flex gap-4 items-start max-w-2xl">
+        <div className="h-10 w-10 shrink-0 bg-white border-0 rounded-2xl flex items-center justify-center text-violet-600 shadow-sm">
           <CalendarDays className="h-5 w-5" />
         </div>
         <div>

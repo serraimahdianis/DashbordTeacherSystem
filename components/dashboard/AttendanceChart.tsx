@@ -65,13 +65,13 @@ export function AttendanceChart({ sessions }: AttendanceChartProps) {
   }, [sessions, weekOffset]);
 
   return (
-    <Card className="lg:col-span-2 shadow-sm border-gray-200">
+    <Card className="lg:col-span-2">
       <CardHeader className="flex flex-row items-center justify-between pb-2">
         <CardTitle className="text-lg font-bold text-gray-800">
           {t.dashboard.attendanceOverview}
         </CardTitle>
         <select
-          className="text-sm border border-gray-200 rounded-md px-3 py-1.5 text-gray-600 bg-white outline-none focus:ring-2 focus:ring-violet-500"
+          className="text-sm border-0 rounded-full px-4 py-2 text-gray-600 bg-gray-50/50 outline-none focus:ring-2 focus:ring-violet-500/20 font-medium"
           value={weekOffset}
           onChange={(e) => setWeekOffset(Number(e.target.value))}
         >
