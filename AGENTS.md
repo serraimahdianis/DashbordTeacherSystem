@@ -6,6 +6,8 @@ This version has breaking changes — APIs, conventions, and file structure may 
 
 # Teacher Kit - Agent Development Guide
 
+Root: `../AGENTS.md` for monorepo-wide commands and cross-project context.
+
 ## Project Overview
 
 **Smart Attendance Teacher Kit** — a university attendance management system for teachers. Manages weekly teaching schedules, live RFID/QR scanning sessions, student attendance tracking, and reports. Connects to a NestJS backend API at `NEXT_PUBLIC_API_URL`.

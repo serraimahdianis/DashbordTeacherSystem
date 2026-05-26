@@ -11,7 +11,8 @@ import type {
 
 // Backend runs at http://localhost:3000 with NO global prefix
 // Endpoints: /auth/teacher/login, /students, /sessions/teacher/:id, etc.
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
+// Using Next.js rewrites (see next.config.ts) to avoid Mixed Content errors when frontend is on HTTPS and backend is HTTP.
+const API_BASE_URL = "/api-proxy";
 
 // ─── Axios Instance ────────────────────────────────────────────────────────────
 export const axiosInstance = axios.create({
