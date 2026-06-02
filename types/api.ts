@@ -34,6 +34,7 @@ export interface Student {
   group: string;
   year: string;
   speciality: string;
+  teacherId?: string;
 }
 
 export interface Module {
@@ -127,6 +128,48 @@ export interface ScanPayload {
   status: AttendanceStatus;
   scanTime?: string;
   method?: "RFID" | "QR" | "MANUAL";
+}
+
+// ─── Admin payloads ────────────────────────────────────────────────────────────
+
+export interface CreateTeacherPayload {
+  fullName: string;
+  email: string;
+  password: string;
+  department: string;
+}
+
+export interface CreateStudentPayload {
+  fullName: string;
+  email: string;
+  birthday: string; // DDMMYYYY — backend auto-generates password
+  studentId: string;
+  rfidCode: string;
+  qrCode: string;
+  group: string;
+  year: string;
+  speciality: string;
+  teacherId?: string;
+}
+
+export interface UpdateStudentPayload {
+  fullName?: string;
+  email?: string;
+  studentId?: string;
+  rfidCode?: string;
+  qrCode?: string;
+  group?: string;
+  year?: string;
+  speciality?: string;
+  teacherId?: string;
+}
+
+export interface PaginatedResponse<T> {
+  data: T[];
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
 }
 
 // Helper to extract module name from populated or unpopulated field

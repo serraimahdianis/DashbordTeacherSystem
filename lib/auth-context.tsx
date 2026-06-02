@@ -47,35 +47,60 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = useCallback(async (email: string, password: string) => {
-    // Step 1: Call login endpoint → returns { access_token, role }
-    const data = await authApi.login(email, password);
-    const token = data.access_token;
+    // Try teacher login first, if it fails try admin login
+    let data: { access_token: string; role: string };
+    let isAdmin = false;
 
-    // Step 2: Decode JWT to get teacher ID (payload.sub)
+    try {
+      data = await authApi.login(email, password);
+    } catch {
+      // Teacher login failed — try admin login
+      data = await authApi.adminLogin(email, password);
+      isAdmin = true;
+    }
+
+    const token = data.access_token;
     const payload = decodeJwtPayload(token);
     if (!payload || !payload.sub) {
       throw new Error("Invalid token received from server");
     }
 
-    // Step 3: Store token first so the next request can use it
-    // (temporarily store minimal user so getToken() works)
-    setCurrentUser({ id: payload.sub, email: "", fullName: "", department: "", role: (payload.role as "teacher" | "admin") || "teacher" }, token);
+    // Check if the role from the JWT is admin
+    if (payload.role === "admin") {
+      isAdmin = true;
+    }
 
-    // Step 4: Fetch full teacher profile from GET /teachers/:id
+    if (isAdmin) {
+      // Admin — no profile in DB, build a synthetic user
+      const authUser: AuthUser = {
+        id: "admin",
+        email: email,
+        fullName: "Administrator",
+        department: "System Admin",
+        role: "admin",
+      };
+      setCurrentUser(authUser, token);
+      setUser(authUser);
+      router.push("/admin");
+      return;
+    }
+
+    // Teacher — fetch full profile
+    setCurrentUser({ id: payload.sub, email: "", fullName: "", department: "", role: "teacher" }, token);
+
     const teacherData = await teachersApi.getById(payload.sub);
     if (!teacherData || typeof teacherData._id !== 'string') {
       throw new Error('Invalid teacher profile received from server');
     }
     const teacher = teacherData as Teacher;
 
-    // Step 5: Build the AuthUser and persist
-    const teacherId = (teacher as Teacher)._id ?? (teacher as unknown as { id?: string }).id;
+    const teacherId = teacher._id ?? (teacher as unknown as { id?: string }).id;
     const authUser: AuthUser = {
       id: teacherId ?? "",
       email: teacher.email,
       fullName: teacher.fullName,
       department: teacher.department,
-      role: (payload.role as "teacher" | "admin") || "teacher",
+      role: "teacher",
     };
     setCurrentUser(authUser, token);
     setUser(authUser);
@@ -84,12 +109,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const register = useCallback(async (data: { fullName: string; email: string; password: string; department: string }) => {
     await authApi.register(data);
-    // Backend sends OTP to email — caller handles UI step transition
   }, []);
 
   const verifyOtp = useCallback(async (email: string, otp: string) => {
     await authApi.verifyOtp(email, otp);
-    // After verification, redirect to login
     router.push("/login");
   }, [router]);
 

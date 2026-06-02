@@ -5,6 +5,9 @@ import type {
   CreateModulePayload,
   CreateSchedulePayload,
   CreateSessionPayload,
+  CreateTeacherPayload,
+  CreateStudentPayload,
+  UpdateStudentPayload,
   ScanPayload,
   SessionStatus,
 } from "@/types/api";
@@ -73,6 +76,9 @@ export const authApi = {
   login: (email: string, password: string) =>
     axiosInstance.post("/auth/teacher/login", { email, password }).then((r) => r.data),
 
+  adminLogin: (email: string, password: string) =>
+    axiosInstance.post("/auth/admin/login", { email, password }).then((r) => r.data),
+
   register: (data: { fullName: string; email: string; password: string; department: string }) =>
     axiosInstance.post("/auth/teacher/register", data).then((r) => r.data),
 
@@ -82,20 +88,32 @@ export const authApi = {
 
 // ─── Teachers API ─────────────────────────────────────────────────────────────
 export const teachersApi = {
+  getAll: (page = 1, limit = 20) =>
+    axiosInstance.get("/teachers", { params: { page, limit } }).then((r) => r.data),
   getById: (id: string) =>
     axiosInstance.get(`/teachers/${id}`).then((r) => r.data),
-  update: (id: string, data: { fullName?: string; department?: string }) =>
+  create: (data: CreateTeacherPayload) =>
+    axiosInstance.post("/teachers", data).then((r) => r.data),
+  update: (id: string, data: Partial<CreateTeacherPayload>) =>
     axiosInstance.patch(`/teachers/${id}`, data).then((r) => r.data),
+  delete: (id: string) =>
+    axiosInstance.delete(`/teachers/${id}`).then((r) => r.data),
 };
 
 // ─── Students API ─────────────────────────────────────────────────────────────
 export const studentsApi = {
-  getAll: (params?: { group?: string; year?: string }) =>
+  getAll: (params?: { group?: string; year?: string; page?: number; limit?: number }) =>
     axiosInstance.get("/students", { params }).then((r) => r.data),
   getById: (id: string) =>
     axiosInstance.get(`/students/${id}`).then((r) => r.data),
   getByRfid: (rfidCode: string) =>
     axiosInstance.get(`/students/rfid/${rfidCode}`).then((r) => r.data),
+  create: (data: CreateStudentPayload) =>
+    axiosInstance.post("/students", data).then((r) => r.data),
+  update: (id: string, data: UpdateStudentPayload) =>
+    axiosInstance.patch(`/students/${id}`, data).then((r) => r.data),
+  delete: (id: string) =>
+    axiosInstance.delete(`/students/${id}`).then((r) => r.data),
 };
 
 // ─── Modules API ──────────────────────────────────────────────────────────────
