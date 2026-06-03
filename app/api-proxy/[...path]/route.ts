@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from "next/server";
 const BACKEND_URL =
   process.env.API_URL ||
   process.env.NEXT_PUBLIC_API_URL ||
-  "http://oo0kccg00sgo80oo804og4gw.89.117.53.152.sslip.io";
+  "http://localhost:3000";
 
 /**
  * Universal proxy handler for all HTTP methods.

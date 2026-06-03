@@ -151,6 +151,7 @@ export default function SessionsPage() {
             moduleId: typeof sch.moduleId === "object" ? sch.moduleId._id : sch.moduleId,
             type: sch.type,
             group: sch.group,
+            speciality: sch.speciality,
             date: today.toISOString(),
             startTime: sch.startTime,
             endTime: sch.endTime,

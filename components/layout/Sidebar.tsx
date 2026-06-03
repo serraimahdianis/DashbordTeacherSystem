@@ -37,6 +37,7 @@ const adminNavItems = [
   { label: "Overview", href: "/admin", icon: LayoutDashboard },
   { label: "Teachers", href: "/admin/teachers", icon: UserCog },
   { label: "Students", href: "/admin/students", icon: GraduationCap },
+  { label: "Settings", href: "/admin/settings", icon: Settings },
 ];
 
 const LANG_LABELS: Record<string, string> = { en: "EN", fr: "FR", ar: "AR" };

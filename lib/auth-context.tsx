@@ -14,6 +14,7 @@ interface AuthContextType {
   register: (data: { fullName: string; email: string; password: string; department: string }) => Promise<void>;
   verifyOtp: (email: string, otp: string) => Promise<void>;
   logout: () => void;
+  updateUser: (updatedFields: Partial<AuthUser>) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -101,6 +102,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       fullName: teacher.fullName,
       department: teacher.department,
       role: "teacher",
+      groups: teacher.groups || [],
+      years: teacher.years || [],
+      specialities: teacher.specialities || [],
     };
     setCurrentUser(authUser, token);
     setUser(authUser);
@@ -122,8 +126,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     router.push("/login");
   }, [router]);
 
+  const updateUser = useCallback((updatedFields: Partial<AuthUser>) => {
+    setUser((prev) => {
+      if (!prev) return null;
+      const updated = { ...prev, ...updatedFields };
+      if (typeof window !== "undefined") {
+        localStorage.setItem("auth_user", JSON.stringify(updated));
+      }
+      return updated;
+    });
+  }, []);
+
   return (
-    <AuthContext.Provider value={{ user, isLoading, login, register, verifyOtp, logout }}>
+    <AuthContext.Provider value={{ user, isLoading, login, register, verifyOtp, logout, updateUser }}>
       {children}
     </AuthContext.Provider>
   );

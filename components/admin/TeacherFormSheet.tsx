@@ -9,24 +9,29 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader2 } from "lucide-react";
-import { teachersApi } from "@/lib/api";
-import type { Teacher } from "@/types/api";
+import { teachersApi, useApi } from "@/lib/api";
+import type { Teacher, Group, Speciality, Year } from "@/types/api";
 
 const createSchema = z.object({
   fullName: z.string().min(2, "Name must be at least 2 characters"),
   email: z.string().email("Please enter a valid email"),
   password: z.string().min(6, "Password must be at least 6 characters"),
   department: z.string().min(2, "Department is required"),
+  groups: z.array(z.string()).optional(),
+  years: z.array(z.string()).optional(),
+  specialities: z.array(z.string()).optional(),
 });
 
 const editSchema = z.object({
   fullName: z.string().min(2, "Name must be at least 2 characters"),
   email: z.string().email("Please enter a valid email"),
   department: z.string().min(2, "Department is required"),
+  groups: z.array(z.string()).optional(),
+  years: z.array(z.string()).optional(),
+  specialities: z.array(z.string()).optional(),
 });
 
 type CreateFormData = z.infer<typeof createSchema>;
-type EditFormData = z.infer<typeof editSchema>;
 
 interface TeacherFormSheetProps {
   open: boolean;
@@ -42,17 +47,45 @@ export function TeacherFormSheet({ open, onOpenChange, teacher, onSuccess }: Tea
     register,
     handleSubmit,
     reset,
+    setValue,
+    watch,
     formState: { errors, isSubmitting },
   } = useForm<CreateFormData>({
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     resolver: zodResolver(isEdit ? editSchema : createSchema) as any,
   });
+
+  const { data: allGroups } = useApi<Group[]>("/metadata/groups");
+  const { data: allYears } = useApi<Year[]>("/metadata/years");
+  const { data: allSpecialities } = useApi<Speciality[]>("/metadata/specialities");
+
+  const selectedGroups = watch("groups") || [];
+  const selectedYears = watch("years") || [];
+  const selectedSpecialities = watch("specialities") || [];
+
+  const handleToggle = (field: "groups" | "years" | "specialities", val: string) => {
+    const current = watch(field) || [];
+    if (current.includes(val)) {
+      setValue(field, current.filter(item => item !== val), { shouldValidate: true });
+    } else {
+      setValue(field, [...current, val], { shouldValidate: true });
+    }
+  };
 
   useEffect(() => {
     if (open) {
       if (teacher) {
-        reset({ fullName: teacher.fullName, email: teacher.email, department: teacher.department, password: "" });
+        reset({
+          fullName: teacher.fullName,
+          email: teacher.email,
+          department: teacher.department,
+          password: "",
+          groups: teacher.groups || [],
+          years: teacher.years || [],
+          specialities: teacher.specialities || [],
+        });
       } else {
-        reset({ fullName: "", email: "", password: "", department: "" });
+        reset({ fullName: "", email: "", password: "", department: "", groups: [], years: [], specialities: [] });
       }
     }
   }, [open, teacher, reset]);
@@ -64,9 +97,17 @@ export function TeacherFormSheet({ open, onOpenChange, teacher, onSuccess }: Tea
           fullName: data.fullName,
           email: data.email,
           department: data.department,
+          groups: data.groups,
+          years: data.years,
+          specialities: data.specialities,
         });
       } else {
-        await teachersApi.create(data);
+        await teachersApi.create({
+          ...data,
+          groups: data.groups || [],
+          years: data.years || [],
+          specialities: data.specialities || [],
+        });
       }
       onSuccess();
       onOpenChange(false);
@@ -111,6 +152,42 @@ export function TeacherFormSheet({ open, onOpenChange, teacher, onSuccess }: Tea
             <Label htmlFor="department">Department</Label>
             <Input id="department" placeholder="Computer Science" {...register("department")} className={errors.department ? "border-red-300" : ""} />
             {errors.department && <p className="text-xs text-red-500">{errors.department.message}</p>}
+          </div>
+
+          <div className="space-y-2">
+            <Label>Assigned Years</Label>
+            <div className="flex flex-wrap gap-2">
+              {allYears?.map(y => (
+                <label key={y._id} className="flex items-center gap-1.5 bg-gray-50 border border-gray-200 px-3 py-1.5 rounded-full cursor-pointer hover:bg-gray-100 transition-colors">
+                  <input type="checkbox" checked={selectedYears.includes(y.name)} onChange={() => handleToggle("years", y.name)} className="accent-indigo-600" />
+                  <span className="text-sm text-gray-700">{y.name}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Assigned Groups</Label>
+            <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto p-1">
+              {allGroups?.map(g => (
+                <label key={g._id} className="flex items-center gap-1.5 bg-gray-50 border border-gray-200 px-3 py-1.5 rounded-full cursor-pointer hover:bg-gray-100 transition-colors">
+                  <input type="checkbox" checked={selectedGroups.includes(g.name)} onChange={() => handleToggle("groups", g.name)} className="accent-indigo-600" />
+                  <span className="text-sm text-gray-700">{g.name}</span>
+                </label>
+              ))}
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Assigned Specialities</Label>
+            <div className="flex flex-wrap gap-2 max-h-32 overflow-y-auto p-1">
+              {allSpecialities?.map(s => (
+                <label key={s._id} className="flex items-center gap-1.5 bg-gray-50 border border-gray-200 px-3 py-1.5 rounded-full cursor-pointer hover:bg-gray-100 transition-colors">
+                  <input type="checkbox" checked={selectedSpecialities.includes(s.name)} onChange={() => handleToggle("specialities", s.name)} className="accent-indigo-600" />
+                  <span className="text-sm text-gray-700">{s.name}</span>
+                </label>
+              ))}
+            </div>
           </div>
 
           <div className="flex gap-3 pt-4">

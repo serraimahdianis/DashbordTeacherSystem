@@ -7,6 +7,9 @@ export interface AuthUser {
   fullName: string;
   department: string;
   role: "teacher" | "admin";
+  groups?: string[];
+  years?: string[];
+  specialities?: string[];
 }
 
 // Backend login returns ONLY { access_token, role }
@@ -22,6 +25,24 @@ export interface Teacher {
   email: string;
   department: string;
   isVerified?: boolean;
+  groups?: string[];
+  years?: string[];
+  specialities?: string[];
+}
+
+export interface Group {
+  _id: string;
+  name: string;
+}
+
+export interface Speciality {
+  _id: string;
+  name: string;
+}
+
+export interface Year {
+  _id: string;
+  name: string;
 }
 
 export interface Student {
@@ -34,7 +55,6 @@ export interface Student {
   group: string;
   year: string;
   speciality: string;
-  teacherId?: string;
 }
 
 export interface Module {
@@ -55,6 +75,7 @@ export interface Schedule {
   type: ScheduleType;
   year: ScheduleYear;
   group: string | null;
+  speciality: string | null;
   dayOfWeek: DayOfWeek;
   startTime: string;
   endTime: string;
@@ -73,6 +94,7 @@ export interface Session {
   endTime: string;
   type: ScheduleType;
   group: string | null;
+  speciality: string | null;
   status: SessionStatus;
   isReplacement: boolean;
   reasonForReplacement?: string;
@@ -102,6 +124,7 @@ export interface CreateSchedulePayload {
   type: ScheduleType;
   year: ScheduleYear;
   group: string | null;
+  speciality?: string | null;
   dayOfWeek: DayOfWeek;
   startTime: string;
   endTime: string;
@@ -117,6 +140,7 @@ export interface CreateSessionPayload {
   endTime: string;
   type: ScheduleType;
   group?: string | null;
+  speciality?: string | null;
   status?: SessionStatus;
   isReplacement?: boolean;
   reasonForReplacement?: string;
@@ -137,6 +161,9 @@ export interface CreateTeacherPayload {
   email: string;
   password: string;
   department: string;
+  groups?: string[];
+  years?: string[];
+  specialities?: string[];
 }
 
 export interface CreateStudentPayload {
@@ -145,11 +172,10 @@ export interface CreateStudentPayload {
   birthday: string; // DDMMYYYY — backend auto-generates password
   studentId: string;
   rfidCode: string;
-  qrCode: string;
+  qrCode?: string;
   group: string;
   year: string;
   speciality: string;
-  teacherId?: string;
 }
 
 export interface UpdateStudentPayload {
@@ -161,7 +187,6 @@ export interface UpdateStudentPayload {
   group?: string;
   year?: string;
   speciality?: string;
-  teacherId?: string;
 }
 
 export interface PaginatedResponse<T> {

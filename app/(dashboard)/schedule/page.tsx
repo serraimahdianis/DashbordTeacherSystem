@@ -12,7 +12,7 @@ import { format } from "date-fns";
 import { useApi, modulesApi, schedulesApi } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { useTranslation } from "@/lib/locale-context";
-import type { Schedule, Module } from "@/types/api";
+import type { Schedule, Module, Group, Speciality, Year } from "@/types/api";
 import { useSWRConfig } from "swr";
 
 interface ScheduleFormData {
@@ -20,6 +20,7 @@ interface ScheduleFormData {
   type: string;
   year: string;
   group: string;
+  speciality: string;
   dayOfWeek: string;
   startTime: string;
   endTime: string;
@@ -34,6 +35,9 @@ export default function SchedulePage() {
 
   const { data: schedulesData, isLoading } = useApi<{ data: Schedule[] }>(swrKey);
   const { data: modulesData } = useApi<{ data: Module[] }>(user?.id ? `/modules/teacher/${user.id}` : null);
+  const { data: groups } = useApi<Group[]>("/metadata/groups");
+  const { data: specialities } = useApi<Speciality[]>("/metadata/specialities");
+  const { data: years } = useApi<Year[]>("/metadata/years");
 
   const schedules = schedulesData?.data;
   const modules = modulesData?.data;
@@ -78,6 +82,7 @@ export default function SchedulePage() {
     type: "",
     year: "",
     group: "",
+    speciality: "",
     dayOfWeek: "",
     startTime: "",
     endTime: "",
@@ -107,6 +112,7 @@ export default function SchedulePage() {
         type: form.type as "cours" | "td" | "tp",
         year: form.year as "L1" | "L2" | "L3" | "M1" | "M2",
         group: form.group || null,
+        speciality: form.speciality || null,
         dayOfWeek: form.dayOfWeek as "Sunday" | "Monday" | "Tuesday" | "Wednesday" | "Thursday" | "Friday" | "Saturday",
         startTime: form.startTime,
         endTime: form.endTime,
@@ -114,7 +120,7 @@ export default function SchedulePage() {
       });
       await mutate(swrKey);
       setSheetOpen(false);
-      setForm({ moduleId: "", type: "", year: "", group: "", dayOfWeek: "", startTime: "", endTime: "", room: "" });
+      setForm({ moduleId: "", type: "", year: "", group: "", speciality: "", dayOfWeek: "", startTime: "", endTime: "", room: "" });
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
       setFormError(typeof msg === "string" ? msg : "Failed to save schedule.");
@@ -283,8 +289,8 @@ export default function SchedulePage() {
                   onChange={(e) => setForm((p) => ({ ...p, year: e.target.value }))}
                 >
                   <option value="">{t.schedule.year}</option>
-                  {["L1", "L2", "L3", "M1", "M2"].map((y) => (
-                    <option key={y} value={y}>{y}</option>
+                  {years?.map((y) => (
+                    <option key={y._id} value={y.name}>{y.name}</option>
                   ))}
                 </select>
               </div>
@@ -292,14 +298,33 @@ export default function SchedulePage() {
               {(form.type === "td" || form.type === "tp") && (
                 <div className="space-y-2">
                   <Label className="text-sm font-semibold text-gray-700">{t.schedule.groupField} <span className="text-red-500">*</span></Label>
-                  <Input
-                    placeholder="e.g. 2A"
+                  <select
+                    required
+                    className="w-full h-11 rounded-2xl border-0 bg-gray-50/50 px-4 py-2 text-sm text-gray-700 outline-none focus:ring-2 focus:ring-violet-500 transition-all"
                     value={form.group}
                     onChange={(e) => setForm((p) => ({ ...p, group: e.target.value }))}
-                    className="h-10 border-gray-200"
-                  />
+                  >
+                    <option value="">Select group</option>
+                    {groups?.map((g) => (
+                      <option key={g._id} value={g.name}>{g.name}</option>
+                    ))}
+                  </select>
                 </div>
               )}
+
+              <div className="space-y-2">
+                <Label className="text-sm font-semibold text-gray-700">Speciality <span className="text-gray-400 text-xs font-normal">(optional — leave blank for all)</span></Label>
+                <select
+                  className="w-full h-11 rounded-2xl border-0 bg-gray-50/50 px-4 py-2 text-sm text-gray-700 outline-none focus:ring-2 focus:ring-violet-500 transition-all"
+                  value={form.speciality}
+                  onChange={(e) => setForm((p) => ({ ...p, speciality: e.target.value }))}
+                >
+                  <option value="">All Specialities</option>
+                  {specialities?.map((s) => (
+                    <option key={s._id} value={s.name}>{s.name}</option>
+                  ))}
+                </select>
+              </div>
 
               <div className="space-y-2">
                 <Label className="text-sm font-semibold text-gray-700">{t.schedule.day} <span className="text-red-500">*</span></Label>
@@ -383,7 +408,7 @@ export default function SchedulePage() {
           <div className="flex flex-wrap gap-3">
             {[
               { value: typeFilter, onChange: setTypeFilter, opts: [t.schedule.allTypes, "cours", "td", "tp"] },
-              { value: yearFilter, onChange: setYearFilter, opts: [t.schedule.allYears, "L1", "L2", "L3", "M1", "M2"] },
+              { value: yearFilter, onChange: setYearFilter, opts: [t.schedule.allYears, ...(years?.map(y => y.name) || [])] },
               { value: dayFilter, onChange: setDayFilter, opts: [t.schedule.allDays, "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday"] },
             ].map((sel, i) => (
               <select
@@ -415,6 +440,7 @@ export default function SchedulePage() {
                   <TableHead className="font-bold text-gray-900">{t.sessions.type}</TableHead>
                   <TableHead className="font-bold text-gray-900">{t.schedule.year}</TableHead>
                   <TableHead className="font-bold text-gray-900">{t.sessions.group}</TableHead>
+                  <TableHead className="font-bold text-gray-900">Speciality</TableHead>
                   <TableHead className="font-bold text-gray-900">{t.schedule.day}</TableHead>
                   <TableHead className="font-bold text-gray-900">{t.sessions.time}</TableHead>
                   <TableHead className="font-bold text-gray-900">{t.sessions.room}</TableHead>
@@ -438,6 +464,15 @@ export default function SchedulePage() {
                     <TableCell className="text-gray-600">{schedule.year}</TableCell>
                     <TableCell className="text-gray-600">
                       {schedule.group ? `${t.sessions.group} ${schedule.group}` : "—"}
+                    </TableCell>
+                    <TableCell>
+                      {schedule.speciality ? (
+                        <Badge variant="outline" className="bg-violet-50 text-violet-700 border-violet-100 font-medium text-xs">
+                          {schedule.speciality}
+                        </Badge>
+                      ) : (
+                        <span className="text-gray-400 text-xs">All</span>
+                      )}
                     </TableCell>
                     <TableCell className="text-gray-600">
                       {t.schedule.days?.[schedule.dayOfWeek as keyof typeof t.schedule.days] || schedule.dayOfWeek}

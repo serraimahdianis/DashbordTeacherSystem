@@ -9,8 +9,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader2 } from "lucide-react";
-import { studentsApi, useApi } from "@/lib/api";
-import type { Student, Teacher, PaginatedResponse } from "@/types/api";
+import { studentsApi, metadataApi, useApi } from "@/lib/api";
+import type { Student, Group, Speciality, Year } from "@/types/api";
 
 const createSchema = z.object({
   fullName: z.string().min(2, "Name must be at least 2 characters"),
@@ -18,11 +18,9 @@ const createSchema = z.object({
   birthday: z.string().regex(/^\d{8}$/, "Birthday must be 8 digits (DDMMYYYY)"),
   studentId: z.string().regex(/^\d+$/, "Student ID must contain only digits"),
   rfidCode: z.string().min(1, "RFID code is required"),
-  qrCode: z.string().min(1, "QR code is required"),
   group: z.string().min(1, "Group is required"),
   year: z.string().min(1, "Year is required"),
   speciality: z.string().min(1, "Speciality is required"),
-  teacherId: z.string().optional(),
 });
 
 const editSchema = z.object({
@@ -30,15 +28,12 @@ const editSchema = z.object({
   email: z.string().email("Please enter a valid email"),
   studentId: z.string().regex(/^\d+$/, "Student ID must contain only digits"),
   rfidCode: z.string().min(1, "RFID code is required"),
-  qrCode: z.string().min(1, "QR code is required"),
   group: z.string().min(1, "Group is required"),
   year: z.string().min(1, "Year is required"),
   speciality: z.string().min(1, "Speciality is required"),
-  teacherId: z.string().optional(),
 });
 
 type CreateFormData = z.infer<typeof createSchema>;
-type EditFormData = z.infer<typeof editSchema>;
 
 interface StudentFormSheetProps {
   open: boolean;
@@ -50,9 +45,6 @@ interface StudentFormSheetProps {
 export function StudentFormSheet({ open, onOpenChange, student, onSuccess }: StudentFormSheetProps) {
   const isEdit = !!student;
 
-  const { data: teachersData } = useApi<PaginatedResponse<Teacher>>("/teachers?page=1&limit=100");
-  const teachersList = teachersData?.data ?? [];
-
   const {
     register,
     handleSubmit,
@@ -61,20 +53,13 @@ export function StudentFormSheet({ open, onOpenChange, student, onSuccess }: Stu
     setValue,
     formState: { errors, isSubmitting },
   } = useForm<CreateFormData>({
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     resolver: zodResolver(isEdit ? editSchema : createSchema) as any,
   });
 
-  const rfidCodeValue = watch("rfidCode");
-
-  // Auto-generate QR code based on RFID code
-  useEffect(() => {
-    if (rfidCodeValue) {
-      const generatedQr = rfidCodeValue.startsWith("RFID-")
-        ? rfidCodeValue.replace(/^RFID-/i, "QR-")
-        : `QR-${rfidCodeValue}`;
-      setValue("qrCode", generatedQr, { shouldValidate: true });
-    }
-  }, [rfidCodeValue, setValue]);
+  const { data: groups } = useApi<Group[]>("/metadata/groups");
+  const { data: specialities } = useApi<Speciality[]>("/metadata/specialities");
+  const { data: years } = useApi<Year[]>("/metadata/years");
 
   useEffect(() => {
     if (open) {
@@ -85,14 +70,12 @@ export function StudentFormSheet({ open, onOpenChange, student, onSuccess }: Stu
           birthday: "",
           studentId: student.studentId,
           rfidCode: student.rfidCode,
-          qrCode: student.qrCode,
           group: student.group,
           year: student.year,
           speciality: student.speciality,
-          teacherId: student.teacherId ?? "",
         });
       } else {
-        reset({ fullName: "", email: "", birthday: "", studentId: "", rfidCode: "", qrCode: "", group: "", year: "", speciality: "", teacherId: "" });
+        reset({ fullName: "", email: "", birthday: "", studentId: "", rfidCode: "", group: "", year: "", speciality: "" });
       }
     }
   }, [open, student, reset]);
@@ -114,7 +97,7 @@ export function StudentFormSheet({ open, onOpenChange, student, onSuccess }: Stu
     }
   };
 
-  const yearOptions = ["L1", "L2", "L3", "M1", "M2"];
+  // (Removed hardcoded yearOptions)
 
   return (
     <Sheet open={open} onOpenChange={onOpenChange}>
@@ -163,8 +146,8 @@ export function StudentFormSheet({ open, onOpenChange, student, onSuccess }: Stu
                 className="flex h-10 w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500/20"
               >
                 <option value="">Select year</option>
-                {yearOptions.map((y) => (
-                  <option key={y} value={y}>{y}</option>
+                {years?.map((y) => (
+                  <option key={y._id} value={y.name}>{y.name}</option>
                 ))}
               </select>
               {errors.year && <p className="text-xs text-red-500">{errors.year.message}</p>}
@@ -172,13 +155,31 @@ export function StudentFormSheet({ open, onOpenChange, student, onSuccess }: Stu
 
             <div className="space-y-1.5">
               <Label htmlFor="group">Group</Label>
-              <Input id="group" placeholder="2A" {...register("group")} className={errors.group ? "border-red-300" : ""} />
+              <select
+                id="group"
+                {...register("group")}
+                className="flex h-10 w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500/20"
+              >
+                <option value="">Select group</option>
+                {groups?.map((g) => (
+                  <option key={g._id} value={g.name}>{g.name}</option>
+                ))}
+              </select>
               {errors.group && <p className="text-xs text-red-500">{errors.group.message}</p>}
             </div>
 
             <div className="space-y-1.5">
               <Label htmlFor="speciality">Speciality</Label>
-              <Input id="speciality" placeholder="Computer Science" {...register("speciality")} className={errors.speciality ? "border-red-300" : ""} />
+              <select
+                id="speciality"
+                {...register("speciality")}
+                className="flex h-10 w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500/20"
+              >
+                <option value="">Select speciality</option>
+                {specialities?.map((s) => (
+                  <option key={s._id} value={s.name}>{s.name}</option>
+                ))}
+              </select>
               {errors.speciality && <p className="text-xs text-red-500">{errors.speciality.message}</p>}
             </div>
 
@@ -186,29 +187,6 @@ export function StudentFormSheet({ open, onOpenChange, student, onSuccess }: Stu
               <Label htmlFor="rfidCode">RFID Code</Label>
               <Input id="rfidCode" placeholder="RFID-0001-ABCD" {...register("rfidCode")} className={errors.rfidCode ? "border-red-300" : ""} />
               {errors.rfidCode && <p className="text-xs text-red-500">{errors.rfidCode.message}</p>}
-            </div>
-
-            <div className="space-y-1.5">
-              <Label htmlFor="qrCode">QR Code</Label>
-              <Input id="qrCode" placeholder="QR-0001-EFGH" {...register("qrCode")} className={errors.qrCode ? "border-red-300" : ""} />
-              {errors.qrCode && <p className="text-xs text-red-500">{errors.qrCode.message}</p>}
-            </div>
-
-            <div className="space-y-1.5 col-span-2">
-              <Label htmlFor="teacherId">Assigned Teacher (Optional)</Label>
-              <select
-                id="teacherId"
-                {...register("teacherId")}
-                className="flex h-10 w-full rounded-md border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500/20"
-              >
-                <option value="">No specific teacher (uses schedules)</option>
-                {teachersList.map((t) => (
-                  <option key={t._id} value={t._id}>
-                    {t.fullName} ({t.department})
-                  </option>
-                ))}
-              </select>
-              {errors.teacherId && <p className="text-xs text-red-500">{errors.teacherId.message}</p>}
             </div>
           </div>
 

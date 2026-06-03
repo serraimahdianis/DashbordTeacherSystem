@@ -13,7 +13,7 @@ export function Header() {
     : "?";
 
   return (
-    <header className="sticky top-0 z-30 flex h-16 w-full items-center justify-between border-b-0 bg-white/80 backdrop-blur-md px-4 md:px-6 shadow-[0_2px_10px_rgb(0,0,0,0.02)]">
+    <header className="sticky top-0 z-30 flex h-16 w-full items-center justify-between border-b-0 bg-white/80 backdrop-blur-md pl-16 pr-4 md:px-6 shadow-[0_2px_10px_rgb(0,0,0,0.02)]">
       <div className="flex items-center gap-4">
         <h2 className="text-lg font-semibold text-gray-800">Smart Attendance</h2>
       </div>

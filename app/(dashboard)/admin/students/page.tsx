@@ -10,7 +10,7 @@ import { Search, X, Plus, Pencil, Trash2, GraduationCap, Loader2, ChevronLeft, C
 import { useApi, studentsApi } from "@/lib/api";
 import { useSWRConfig } from "swr";
 import { StudentFormSheet } from "@/components/admin/StudentFormSheet";
-import type { Student, PaginatedResponse, Teacher } from "@/types/api";
+import type { Student, PaginatedResponse } from "@/types/api";
 
 export default function AdminStudentsPage() {
   const { mutate } = useSWRConfig();
@@ -18,29 +18,19 @@ export default function AdminStudentsPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [yearFilter, setYearFilter] = useState("");
   const [groupFilter, setGroupFilter] = useState("");
-  const [sheetOpen, setSheetOpen] = useState(false);
-  const [editingStudent, setEditingStudent] = useState<Student | null>(null);
-  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [specialityFilter, setSpecialityFilter] = useState("");
 
   const limit = 20;
   const swrKey = `/students?page=${page}&limit=${limit}`;
   const { data, isLoading } = useApi<PaginatedResponse<Student>>(swrKey);
-  const { data: teachersData } = useApi<PaginatedResponse<Teacher>>("/teachers?page=1&limit=100");
 
   const students = data?.data ?? [];
   const totalPages = data?.totalPages ?? 1;
   const total = data?.total ?? 0;
 
-  const teacherMap = useMemo(() => {
-    const map = new Map<string, string>();
-    teachersData?.data?.forEach((t) => {
-      map.set(t._id, t.fullName);
-    });
-    return map;
-  }, [teachersData]);
-
   const uniqueYears = useMemo(() => [...new Set(students.map((s) => s.year))].sort(), [students]);
   const uniqueGroups = useMemo(() => [...new Set(students.map((s) => s.group?.toString().trim()).filter(Boolean))].sort(), [students]);
+  const uniqueSpecialities = useMemo(() => [...new Set(students.map((s) => s.speciality?.toString().trim()).filter(Boolean))].sort(), [students]);
 
   const filteredStudents = useMemo(() => {
     return students.filter((s) => {
@@ -53,9 +43,10 @@ export default function AdminStudentsPage() {
         s.rfidCode.toLowerCase().includes(q);
       const matchesYear = !yearFilter || s.year === yearFilter;
       const matchesGroup = !groupFilter || s.group?.toString().trim() === groupFilter;
-      return matchesSearch && matchesYear && matchesGroup;
+      const matchesSpeciality = !specialityFilter || s.speciality?.toString().trim() === specialityFilter;
+      return matchesSearch && matchesYear && matchesGroup && matchesSpeciality;
     });
-  }, [students, searchQuery, yearFilter, groupFilter]);
+  }, [students, searchQuery, yearFilter, groupFilter, specialityFilter]);
 
   const handleDelete = async (id: string) => {
     if (!confirm("Are you sure you want to delete this student? This action cannot be undone.")) return;
@@ -85,7 +76,11 @@ export default function AdminStudentsPage() {
     mutate(swrKey);
   };
 
-  const hasFilters = searchQuery || yearFilter || groupFilter;
+  const [sheetOpen, setSheetOpen] = useState(false);
+  const [editingStudent, setEditingStudent] = useState<Student | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  const hasFilters = searchQuery || yearFilter || groupFilter || specialityFilter;
 
   return (
     <div className="flex flex-col space-y-8 max-w-[1400px] mx-auto pb-10">
@@ -152,6 +147,16 @@ export default function AdminStudentsPage() {
                 <option key={g} value={g}>Group {g}</option>
               ))}
             </select>
+            <select
+              className="h-12 rounded-2xl border-0 bg-gray-50/50 px-4 text-sm text-gray-700 outline-none focus:ring-2 focus:ring-indigo-500/20 font-bold cursor-pointer min-w-[150px]"
+              value={specialityFilter}
+              onChange={(e) => setSpecialityFilter(e.target.value)}
+            >
+              <option value="">All Specialities</option>
+              {uniqueSpecialities.map((sp) => (
+                <option key={sp} value={sp}>{sp}</option>
+              ))}
+            </select>
           </div>
         </div>
 
@@ -164,7 +169,7 @@ export default function AdminStudentsPage() {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => { setSearchQuery(""); setYearFilter(""); setGroupFilter(""); }}
+              onClick={() => { setSearchQuery(""); setYearFilter(""); setGroupFilter(""); setSpecialityFilter(""); }}
               className="ml-auto text-xs text-red-500 hover:text-red-600 hover:bg-red-50 h-7 px-3 gap-1 font-bold rounded-full"
             >
               <X className="h-3 w-3" /> Reset
@@ -184,7 +189,6 @@ export default function AdminStudentsPage() {
                 <TableHead className="font-bold text-gray-900 text-center">Year</TableHead>
                 <TableHead className="font-bold text-gray-900 text-center">Group</TableHead>
                 <TableHead className="font-bold text-gray-900">Speciality</TableHead>
-                <TableHead className="font-bold text-gray-900">Assigned Teacher</TableHead>
                 <TableHead className="font-bold text-gray-900 text-right pr-6">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -239,15 +243,6 @@ export default function AdminStudentsPage() {
                       <Badge variant="outline" className="bg-indigo-50 text-indigo-700 border-indigo-100 font-extrabold">G{student.group}</Badge>
                     </TableCell>
                     <TableCell className="text-gray-600 text-sm font-medium">{student.speciality}</TableCell>
-                    <TableCell className="text-gray-600 text-sm font-medium">
-                      {student.teacherId ? (
-                        <Badge variant="outline" className="bg-indigo-50 text-indigo-700 border-indigo-100 font-semibold rounded-lg">
-                          {teacherMap.get(student.teacherId) || "Loading..."}
-                        </Badge>
-                      ) : (
-                        <span className="text-gray-400 italic text-xs">Schedules Only</span>
-                      )}
-                    </TableCell>
                     <TableCell className="text-right pr-6">
                       <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                         <Button variant="outline" size="sm" className="h-8 gap-1.5 rounded-lg border-gray-200 text-gray-600 hover:text-indigo-600 hover:border-indigo-200" onClick={() => handleEdit(student)}>

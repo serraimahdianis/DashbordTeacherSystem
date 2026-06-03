@@ -17,40 +17,25 @@ export default function StudentsPage() {
   const { t } = useTranslation();
   
   const { data: studentsData, isLoading: loadingStudents } = useApi<{ data: Student[] }>("/students?limit=500");
-  const { data: teacherSchedulesData, isLoading: loadingSchedules } = useApi<{ data: Schedule[] }>(
-    user?.id ? `/schedules/teacher/${user.id}` : null
-  );
 
   const students = studentsData?.data;
-  const teacherSchedules = teacherSchedulesData?.data;
 
   const [searchQuery, setSearchQuery] = useState("");
   const [yearFilter, setYearFilter] = useState("");
   const [groupFilter, setGroupFilter] = useState("");
-  // Default to false so the user sees data immediately, they can toggle to see 'My Students'
-  const [showOnlyMyStudents, setShowOnlyMyStudents] = useState(false);
 
   const allStudents = useMemo(() => students ?? [], [students]);
-
-  // Identify groups/years that this teacher actually teaches
-  const teacherGroups = useMemo(() => {
-    if (!teacherSchedules) return new Set<string>();
-    // Normalize group names to ensure matching (trim and uppercase)
-    return new Set(teacherSchedules.map(s => (s.group?.toString() ?? '').trim()).filter(Boolean));
-  }, [teacherSchedules]);
 
   const uniqueYears = useMemo(() => [...new Set(allStudents.map((s) => s.year))].sort(), [allStudents]);
   const uniqueGroups = useMemo(() => [...new Set(allStudents.map((s) => (s.group?.toString() ?? '').trim()))].filter(Boolean).sort(), [allStudents]);
 
+  const teacherGroups = useMemo(() => {
+    return new Set(user?.groups?.map((g) => g.trim()) ?? []);
+  }, [user?.groups]);
+
   const filteredStudents = useMemo(() => {
     return allStudents.filter((s) => {
       const studentGroup = (s.group?.toString() ?? '').trim();
-      
-      // Identity filter: Only show students in groups this teacher teaches
-      if (showOnlyMyStudents && teacherGroups.size > 0) {
-        if (!studentGroup || !teacherGroups.has(studentGroup)) return false;
-      }
-
       const matchesSearch =
         searchQuery === "" ||
         s.fullName.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -63,16 +48,15 @@ export default function StudentsPage() {
       
       return matchesSearch && matchesYear && matchesGroup;
     });
-  }, [allStudents, searchQuery, yearFilter, groupFilter, showOnlyMyStudents, teacherGroups]);
+  }, [allStudents, searchQuery, yearFilter, groupFilter]);
 
-  const isLoading = loadingStudents || loadingSchedules;
-  const hasActiveFilters = searchQuery !== "" || yearFilter !== "" || groupFilter !== "" || showOnlyMyStudents;
+  const isLoading = loadingStudents;
+  const hasActiveFilters = searchQuery !== "" || yearFilter !== "" || groupFilter !== "";
 
   const clearAllFilters = () => {
     setSearchQuery("");
     setYearFilter("");
     setGroupFilter("");
-    setShowOnlyMyStudents(false);
   };
 
   return (
@@ -135,21 +119,6 @@ export default function StudentsPage() {
           </div>
           
           <div className="flex flex-wrap md:flex-nowrap gap-3 w-full xl:w-auto">
-            <div className="flex items-center gap-2 px-3 py-1 bg-violet-50/50 border-0 rounded-xl h-12">
-              <span className="text-xs font-bold text-violet-700 uppercase px-1">My Groups</span>
-              <button
-                onClick={() => setShowOnlyMyStudents(!showOnlyMyStudents)}
-                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${
-                  showOnlyMyStudents ? "bg-violet-600" : "bg-gray-200"
-                }`}
-              >
-                <span
-                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                    showOnlyMyStudents ? "translate-x-6" : "translate-x-1"
-                  }`}
-                />
-              </button>
-            </div>
 
             <select
               className="h-12 rounded-2xl border-0 bg-gray-50/50 px-4 text-sm text-gray-700 outline-none focus:ring-2 focus:ring-violet-500/20 font-bold cursor-pointer min-w-[140px]"
@@ -267,9 +236,7 @@ export default function StudentsPage() {
                       <div className="max-w-[300px]">
                         <p className="text-gray-900 font-bold">No results found</p>
                         <p className="text-sm mt-1">
-                          {showOnlyMyStudents 
-                            ? "You don't have any students assigned to your specific groups yet." 
-                            : "We couldn't find any students matching your current selection."}
+                          We couldn&apos;t find any students matching your current selection.
                         </p>
                       </div>
                       <Button
@@ -294,7 +261,11 @@ export default function StudentsPage() {
                   .toUpperCase()
                   .slice(0, 2);
                 
-                const isTeached = studentGroup && teacherGroups.has(studentGroup);
+                const isTeached = user?.role === 'teacher' && (
+                  (!user.years || user.years.length === 0 || user.years.includes(student.year)) &&
+                  (!user.groups || user.groups.length === 0 || user.groups.some(g => g.trim() === (student.group?.toString() ?? '').trim())) &&
+                  (!user.specialities || user.specialities.length === 0 || user.specialities.some(s => s.trim() === (student.speciality ?? '').trim()))
+                );
 
                 return (
                   <TableRow 

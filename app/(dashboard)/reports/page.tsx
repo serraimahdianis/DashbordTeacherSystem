@@ -38,16 +38,16 @@ function ReportAttendanceTable({ sessionId }: { sessionId: string }) {
   return (
     <div>
       {/* Metrics Summary Row */}
-      <div className="grid grid-cols-4 gap-4 mb-6 bg-gray-50 p-4 rounded-xl print:bg-transparent print:border print:border-gray-200">
-        <div className="text-center border-r border-gray-200 last:border-none">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6 bg-gray-50 p-4 rounded-xl print:bg-transparent print:border print:border-gray-200">
+        <div className="text-center md:border-r border-gray-200 last:border-none">
           <div className="text-xs text-gray-500 font-medium">Total Roster</div>
           <div className="text-lg font-bold text-gray-900 mt-0.5">{total}</div>
         </div>
-        <div className="text-center border-r border-gray-200 last:border-none">
+        <div className="text-center md:border-r border-gray-200 last:border-none">
           <div className="text-xs text-emerald-600 font-medium">{t.live?.present || "Present"}</div>
           <div className="text-lg font-bold text-emerald-700 mt-0.5">{presentCount}</div>
         </div>
-        <div className="text-center border-r border-gray-200 last:border-none">
+        <div className="text-center md:border-r border-gray-200 last:border-none">
           <div className="text-xs text-amber-600 font-medium">{t.live?.late || "Late"}</div>
           <div className="text-lg font-bold text-amber-700 mt-0.5">{lateCount}</div>
         </div>

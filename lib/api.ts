@@ -14,8 +14,7 @@ import type {
 
 // Backend runs at http://localhost:3000 with NO global prefix
 // Endpoints: /auth/teacher/login, /students, /sessions/teacher/:id, etc.
-// Using Next.js rewrites (see next.config.ts) to avoid Mixed Content errors when frontend is on HTTPS and backend is HTTP.
-const API_BASE_URL = "/api-proxy";
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3000";
 
 // ─── Axios Instance ────────────────────────────────────────────────────────────
 export const axiosInstance = axios.create({
@@ -170,4 +169,28 @@ export const attendanceApi = {
     axiosInstance.get(`/attendance/session/${sessionId}`).then((r) => r.data),
   getByStudent: (studentId: string) =>
     axiosInstance.get(`/attendance/student/${studentId}`).then((r) => r.data),
+};
+
+// ─── Metadata API ─────────────────────────────────────────────────────────────
+export const metadataApi = {
+  getGroups: () =>
+    axiosInstance.get("/metadata/groups").then((r) => r.data),
+  addGroup: (name: string) =>
+    axiosInstance.post("/metadata/groups", { name }).then((r) => r.data),
+  deleteGroup: (id: string) =>
+    axiosInstance.delete(`/metadata/groups/${id}`).then((r) => r.data),
+  
+  getSpecialities: () =>
+    axiosInstance.get("/metadata/specialities").then((r) => r.data),
+  addSpeciality: (name: string) =>
+    axiosInstance.post("/metadata/specialities", { name }).then((r) => r.data),
+  deleteSpeciality: (id: string) =>
+    axiosInstance.delete(`/metadata/specialities/${id}`).then((r) => r.data),
+    
+  getYears: () =>
+    axiosInstance.get("/metadata/years").then((r) => r.data),
+  addYear: (name: string) =>
+    axiosInstance.post("/metadata/years", { name }).then((r) => r.data),
+  deleteYear: (id: string) =>
+    axiosInstance.delete(`/metadata/years/${id}`).then((r) => r.data),
 };
