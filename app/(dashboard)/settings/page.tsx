@@ -5,10 +5,9 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
-import { CheckCircle } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { useTranslation } from "@/lib/locale-context";
-import { axiosInstance, teachersApi, useApi } from "@/lib/api";
+import { teachersApi, useApi } from "@/lib/api";
 import type { Group, Speciality, Year } from "@/types/api";
 
 export default function SettingsPage() {
@@ -17,9 +16,6 @@ export default function SettingsPage() {
   
   const [fullName, setFullName] = useState(user?.fullName ?? "");
   const [department, setDepartment] = useState(user?.department ?? "");
-  const [currentPassword, setCurrentPassword] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
 
   const [selectedGroups, setSelectedGroups] = useState<string[]>(user?.groups || []);
   const [selectedYears, setSelectedYears] = useState<string[]>(user?.years || []);
@@ -86,10 +82,6 @@ export default function SettingsPage() {
       setIsSaving(false);
     }
   };
-
-  const passwordMeetsLength = newPassword.length >= 8;
-  const passwordHasUppercase = /[A-Z]/.test(newPassword);
-  const passwordHasNumber = /[0-9]/.test(newPassword);
 
   return (
     <div className="flex flex-col space-y-6 max-w-4xl mx-auto">
@@ -181,98 +173,6 @@ export default function SettingsPage() {
           >
             {isSaving ? "Saving..." : saved ? t.settings.saved : t.common.save}
           </Button>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>{t.settings.changePassword}</CardTitle>
-          <CardDescription>{t.settings.passwordDesc}</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="max-w-md space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="currentPassword">{t.settings.currentPassword}</Label>
-              <Input
-                id="currentPassword"
-                type="password"
-                value={currentPassword}
-                onChange={(e) => setCurrentPassword(e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="newPassword">{t.settings.newPassword}</Label>
-              <Input
-                id="newPassword"
-                type="password"
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="confirmPassword">{t.settings.confirmPassword}</Label>
-              <Input
-                id="confirmPassword"
-                type="password"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-              />
-            </div>
-
-            <div className="bg-gray-50/50 rounded-2xl p-4 space-y-2 mt-4">
-              <p className="text-sm font-medium text-gray-900">{t.settings.requirements}:</p>
-              <ul className="text-sm text-gray-600 space-y-1">
-                {[
-                  { label: t.settings.minChars, ok: passwordMeetsLength },
-                  { label: t.settings.uppercase, ok: passwordHasUppercase },
-                  { label: t.settings.number, ok: passwordHasNumber },
-                ].map(({ label, ok }) => (
-                  <li key={label} className="flex items-center gap-2">
-                    <CheckCircle className={`h-4 w-4 ${ok ? "text-emerald-500" : "text-gray-300"}`} />
-                    {label}
-                  </li>
-                ))}
-              </ul>
-              {newPassword && confirmPassword && newPassword !== confirmPassword && (
-                <p className="text-sm text-red-500 mt-2">{t.settings.noMatch}</p>
-              )}
-            </div>
-
-            <Button
-              className="mt-4"
-              variant="outline"
-              disabled={
-                !currentPassword ||
-                !newPassword ||
-                !confirmPassword ||
-                newPassword !== confirmPassword ||
-                !passwordMeetsLength ||
-                !passwordHasUppercase ||
-                !passwordHasNumber
-              }
-              onClick={async () => {
-                if (!user?.id) return;
-                setError(null);
-                setSaved(false);
-                try {
-                  await axiosInstance.patch("/auth/teacher/change-password", {
-                    currentPassword,
-                    newPassword,
-                  });
-                  setCurrentPassword("");
-                  setNewPassword("");
-                  setConfirmPassword("");
-                  setSaved(true);
-                  setTimeout(() => setSaved(false), 2000);
-                } catch (err: unknown) {
-                  const axiosErr = err as { response?: { data?: { message?: string } } };
-                  setError(axiosErr.response?.data?.message || t.common.error);
-                }
-              }}
-            >
-              {t.settings.updatePassword}
-            </Button>
-          </div>
         </CardContent>
       </Card>
     </div>
