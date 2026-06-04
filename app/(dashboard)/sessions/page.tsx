@@ -14,7 +14,7 @@ import { formatDate } from "@/lib/utils";
 import { useApi, sessionsApi, modulesApi } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { useTranslation } from "@/lib/locale-context";
-import type { Session, Module, Schedule } from "@/types/api";
+import type { Session, Module, Schedule, Group, Speciality, Year } from "@/types/api";
 import { useSWRConfig } from "swr";
 import { isToday, parseISO } from "date-fns";
 
@@ -36,6 +36,9 @@ export default function SessionsPage() {
   const { data: schedulesData, isLoading: loadingSchedules } = useApi<{ data: Schedule[] }>(
     user?.id ? `/schedules/teacher/${user.id}` : null
   );
+  const { data: groups } = useApi<Group[]>("/metadata/groups");
+  const { data: specialities } = useApi<Speciality[]>("/metadata/specialities");
+  const { data: years } = useApi<Year[]>("/metadata/years");
 
   const sessions = sessionsData?.data;
   const modules = modulesData?.data;
@@ -66,7 +69,9 @@ export default function SessionsPage() {
     startTime: "",
     endTime: "",
     type: "",
+    year: "",
     group: "",
+    speciality: "",
     reasonForReplacement: "",
   });
 
@@ -83,14 +88,16 @@ export default function SessionsPage() {
         startTime: form.startTime,
         endTime: form.endTime,
         type: form.type as "cours" | "td" | "tp",
+        year: form.year || undefined,
         group: form.group || null,
+        speciality: form.speciality || null,
         status: "planned",
         isReplacement: true,
         reasonForReplacement: form.reasonForReplacement || "Extra session",
       });
       await mutate(swrKey);
       setSheetOpen(false);
-      setForm({ moduleId: "", date: "", startTime: "", endTime: "", type: "", group: "", reasonForReplacement: "" });
+      setForm({ moduleId: "", date: "", startTime: "", endTime: "", type: "", year: "", group: "", speciality: "", reasonForReplacement: "" });
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
       setFormError(typeof msg === "string" ? msg : "Failed to create replacement session.");
@@ -304,6 +311,52 @@ export default function SessionsPage() {
                   <option value="cours">Cours</option>
                   <option value="td">TD</option>
                   <option value="tp">TP</option>
+                </select>
+              </div>
+
+              <div className="space-y-2">
+                <Label className="text-sm font-semibold text-gray-700">Year <span className="text-red-500">*</span></Label>
+                <select
+                  required
+                  className="w-full h-11 rounded-2xl border-0 bg-gray-50/50 px-4 py-2 text-sm text-gray-700 outline-none focus:ring-2 focus:ring-violet-500 transition-all"
+                  value={form.year}
+                  onChange={(e) => setForm((p) => ({ ...p, year: e.target.value }))}
+                >
+                  <option value="">Select Year</option>
+                  {years?.map((y) => (
+                    <option key={y._id} value={y.name}>{y.name}</option>
+                  ))}
+                </select>
+              </div>
+
+              {(form.type === "td" || form.type === "tp") && (
+                <div className="space-y-2">
+                  <Label className="text-sm font-semibold text-gray-700">{t.sessions.group} <span className="text-red-500">*</span></Label>
+                  <select
+                    required
+                    className="w-full h-11 rounded-2xl border-0 bg-gray-50/50 px-4 py-2 text-sm text-gray-700 outline-none focus:ring-2 focus:ring-violet-500 transition-all"
+                    value={form.group}
+                    onChange={(e) => setForm((p) => ({ ...p, group: e.target.value }))}
+                  >
+                    <option value="">Select group</option>
+                    {groups?.map((g) => (
+                      <option key={g._id} value={g.name}>{g.name}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              <div className="space-y-2">
+                <Label className="text-sm font-semibold text-gray-700">Speciality <span className="text-gray-400 text-xs font-normal">(optional — leave blank for all)</span></Label>
+                <select
+                  className="w-full h-11 rounded-2xl border-0 bg-gray-50/50 px-4 py-2 text-sm text-gray-700 outline-none focus:ring-2 focus:ring-violet-500 transition-all"
+                  value={form.speciality}
+                  onChange={(e) => setForm((p) => ({ ...p, speciality: e.target.value }))}
+                >
+                  <option value="">All Specialities</option>
+                  {specialities?.map((s) => (
+                    <option key={s._id} value={s.name}>{s.name}</option>
+                  ))}
                 </select>
               </div>
 

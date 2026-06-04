@@ -139,6 +139,7 @@ export interface CreateSessionPayload {
   startTime: string;
   endTime: string;
   type: ScheduleType;
+  year?: string;
   group?: string | null;
   speciality?: string | null;
   status?: SessionStatus;
