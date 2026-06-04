@@ -24,7 +24,18 @@ export default function StudentsPage() {
   const [yearFilter, setYearFilter] = useState("");
   const [groupFilter, setGroupFilter] = useState("");
 
-  const allStudents = useMemo(() => students ?? [], [students]);
+  const allStudents = useMemo(() => {
+    const list = students ?? [];
+    if (user?.role === "teacher") {
+      return list.filter((student) => {
+        const yearOk = !user.years || user.years.length === 0 || user.years.includes(student.year);
+        const groupOk = !user.groups || user.groups.length === 0 || user.groups.some(g => g.trim() === (student.group?.toString() ?? '').trim());
+        const specialityOk = !user.specialities || user.specialities.length === 0 || user.specialities.some(s => s.trim() === (student.speciality ?? '').trim());
+        return yearOk && groupOk && specialityOk;
+      });
+    }
+    return list;
+  }, [students, user]);
 
   const uniqueYears = useMemo(() => [...new Set(allStudents.map((s) => s.year))].sort(), [allStudents]);
   const uniqueGroups = useMemo(() => [...new Set(allStudents.map((s) => (s.group?.toString() ?? '').trim()))].filter(Boolean).sort(), [allStudents]);
