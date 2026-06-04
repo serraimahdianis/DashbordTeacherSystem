@@ -58,32 +58,7 @@ export default function SessionsPage() {
   const [saving, setSaving] = useState(false);
   const [formError, setFormError] = useState<string | null>(null);
 
-  const [moduleSheetOpen, setModuleSheetOpen] = useState(false);
-  const [moduleSaving, setModuleSaving] = useState(false);
-  const [moduleFormError, setModuleFormError] = useState<string | null>(null);
-  const [moduleForm, setModuleForm] = useState({ name: "", year: "" });
 
-  const handleSaveModule = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!user?.id) return;
-    setModuleFormError(null);
-    setModuleSaving(true);
-    try {
-      await modulesApi.create({
-        name: moduleForm.name,
-        year: moduleForm.year as "L1" | "L2" | "L3" | "M1" | "M2",
-        teacherId: user.id,
-      });
-      await mutate(user?.id ? `/modules/teacher/${user.id}` : null);
-      setModuleSheetOpen(false);
-      setModuleForm({ name: "", year: "" });
-    } catch (err: unknown) {
-      const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
-      setModuleFormError(typeof msg === "string" ? msg : "Failed to save module.");
-    } finally {
-      setModuleSaving(false);
-    }
-  };
   
   const [form, setForm] = useState({
     moduleId: "",
@@ -277,61 +252,7 @@ export default function SessionsPage() {
             <RotateCcw className="h-4 w-4" />
           </Button>
 
-          <Sheet open={moduleSheetOpen} onOpenChange={setModuleSheetOpen}>
-            <SheetTrigger asChild>
-              <Button variant="outline" className="text-violet-600 border-violet-200 hover:bg-violet-50 shadow-sm font-medium h-10 px-4 gap-2">
-                <Plus className="h-4 w-4" />
-                New Module
-              </Button>
-            </SheetTrigger>
-            <SheetContent className="w-full sm:max-w-md overflow-y-auto">
-              <SheetHeader className="text-left mb-6">
-                <SheetTitle className="text-xl font-bold">Create New Module</SheetTitle>
-                <SheetDescription className="text-gray-500">
-                  Add a new subject to your teaching list.
-                </SheetDescription>
-              </SheetHeader>
-              <form className="space-y-5" onSubmit={handleSaveModule}>
-                {moduleFormError && (
-                  <div className="bg-red-50 border border-red-200 text-red-700 text-sm rounded-lg px-4 py-3">
-                    {moduleFormError}
-                  </div>
-                )}
-                <div className="space-y-2">
-                  <Label className="text-sm font-semibold text-gray-700">Module Name <span className="text-red-500">*</span></Label>
-                  <Input
-                    placeholder="e.g. Web Development"
-                    required
-                    className="h-10 border-gray-200"
-                    value={moduleForm.name}
-                    onChange={(e) => setModuleForm((p) => ({ ...p, name: e.target.value }))}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label className="text-sm font-semibold text-gray-700">Year <span className="text-red-500">*</span></Label>
-                  <select
-                    required
-                    className="w-full h-11 rounded-2xl border-0 bg-gray-50/50 px-4 py-2 text-sm text-gray-700 outline-none focus:ring-2 focus:ring-violet-500 transition-all"
-                    value={moduleForm.year}
-                    onChange={(e) => setModuleForm((p) => ({ ...p, year: e.target.value }))}
-                  >
-                    <option value="">Select Year</option>
-                    {["L1", "L2", "L3", "M1", "M2"].map((y) => (
-                      <option key={y} value={y}>{y}</option>
-                    ))}
-                  </select>
-                </div>
-                <div className="flex justify-between items-center pt-2">
-                  <Button type="button" variant="outline" className="text-gray-700" onClick={() => setModuleSheetOpen(false)}>
-                    {t.common.cancel}
-                  </Button>
-                  <Button type="submit" className="bg-violet-600 hover:bg-violet-700 text-white font-medium" disabled={moduleSaving}>
-                    {moduleSaving ? <><Loader2 className="h-4 w-4 animate-spin mr-2" />{t.common.loading}</> : "Save Module"}
-                  </Button>
-                </div>
-              </form>
-            </SheetContent>
-          </Sheet>
+
 
         <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
           <SheetTrigger asChild>
