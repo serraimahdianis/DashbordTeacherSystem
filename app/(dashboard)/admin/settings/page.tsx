@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { metadataApi, useApi } from "@/lib/api";
-import type { Group, Speciality, Year } from "@/types/api";
+import { metadataApi, useApi, modulesApi, teachersApi } from "@/lib/api";
+import type { Group, Speciality, Year, Teacher, Module } from "@/types/api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Trash2, Plus } from "lucide-react";
@@ -13,10 +13,15 @@ export default function SettingsPage() {
   const { data: groups, mutate: mutateGroups, isLoading: loadingGroups } = useApi<Group[]>("/metadata/groups");
   const { data: specialities, mutate: mutateSpecialities, isLoading: loadingSpecialities } = useApi<Speciality[]>("/metadata/specialities");
   const { data: years, mutate: mutateYears, isLoading: loadingYears } = useApi<Year[]>("/metadata/years");
+  const { data: modulesData, mutate: mutateModules, isLoading: loadingModules } = useApi<{ data: any[] }>("/modules?limit=1000");
+  const { data: teachersData } = useApi<{ data: any[] }>("/teachers?limit=1000");
 
   const [newGroup, setNewGroup] = useState("");
   const [newSpeciality, setNewSpeciality] = useState("");
   const [newYear, setNewYear] = useState("");
+  const [newModuleName, setNewModuleName] = useState("");
+  const [newModuleYear, setNewModuleYear] = useState("");
+  const [newModuleTeacherId, setNewModuleTeacherId] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleAddGroup = async () => {
@@ -94,6 +99,41 @@ export default function SettingsPage() {
       toast.success("Year deleted");
     } catch (error) {
       toast.error("Failed to delete year");
+    }
+  };
+
+  const handleAddModule = async () => {
+    if (!newModuleName.trim() || !newModuleYear || !newModuleTeacherId) {
+      toast.error("Please fill in all module fields");
+      return;
+    }
+    try {
+      setIsSubmitting(true);
+      await modulesApi.create({
+        name: newModuleName.trim(),
+        year: newModuleYear as any,
+        teacherId: newModuleTeacherId,
+      });
+      setNewModuleName("");
+      setNewModuleYear("");
+      setNewModuleTeacherId("");
+      mutateModules();
+      toast.success("Module added successfully");
+    } catch (error) {
+      toast.error("Failed to add module");
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleDeleteModule = async (id: string) => {
+    if (!confirm("Are you sure you want to delete this module?")) return;
+    try {
+      await modulesApi.delete(id);
+      mutateModules();
+      toast.success("Module deleted successfully");
+    } catch (error) {
+      toast.error("Failed to delete module");
     }
   };
 
@@ -216,6 +256,103 @@ export default function SettingsPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Modules Management */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Modules</CardTitle>
+          <CardDescription>Manage academic modules and assign them to teachers and academic years.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+            <div className="space-y-2">
+              <label className="text-sm font-semibold text-gray-700">Module Name</label>
+              <Input
+                placeholder="e.g. Artificial Intelligence"
+                value={newModuleName}
+                onChange={(e) => setNewModuleName(e.target.value)}
+              />
+            </div>
+            <div className="space-y-2 flex flex-col">
+              <label className="text-sm font-semibold text-gray-700 mb-1">Academic Year</label>
+              <select
+                className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                value={newModuleYear}
+                onChange={(e) => setNewModuleYear(e.target.value)}
+              >
+                <option value="">Select Year</option>
+                {years?.map((y) => (
+                  <option key={y._id} value={y.name}>{y.name}</option>
+                ))}
+              </select>
+            </div>
+            <div className="space-y-2 flex flex-col">
+              <label className="text-sm font-semibold text-gray-700 mb-1">Assigned Teacher</label>
+              <select
+                className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                value={newModuleTeacherId}
+                onChange={(e) => setNewModuleTeacherId(e.target.value)}
+              >
+                <option value="">Select Teacher</option>
+                {teachersData?.data?.map((t: any) => (
+                  <option key={t._id} value={t._id}>{t.fullName} ({t.email})</option>
+                ))}
+              </select>
+            </div>
+            <Button onClick={handleAddModule} disabled={isSubmitting || !newModuleName.trim() || !newModuleYear || !newModuleTeacherId} className="h-10">
+              <Plus className="h-4 w-4 mr-2" />
+              Add Module
+            </Button>
+          </div>
+
+          {loadingModules ? (
+            <p className="text-sm text-gray-500">Loading modules...</p>
+          ) : (
+            <div className="border rounded-lg overflow-hidden">
+              <table className="w-full text-sm text-left">
+                <thead className="bg-gray-50 text-gray-700 font-semibold border-b">
+                  <tr>
+                    <th className="px-4 py-3">Module Name</th>
+                    <th className="px-4 py-3">Year</th>
+                    <th className="px-4 py-3">Assigned Teacher</th>
+                    <th className="px-4 py-3 text-right">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y">
+                  {modulesData?.data?.map((module: any) => (
+                    <tr key={module._id} className="hover:bg-gray-50/50">
+                      <td className="px-4 py-3 font-medium text-gray-900">{module.name}</td>
+                      <td className="px-4 py-3 text-gray-600">{module.year}</td>
+                      <td className="px-4 py-3 text-gray-600">
+                        {typeof module.teacherId === "object" && module.teacherId !== null
+                          ? module.teacherId.fullName
+                          : teachersData?.data?.find((t: any) => t._id === module.teacherId)?.fullName || "Unknown Teacher"}
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
+                          onClick={() => handleDeleteModule(module._id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </td>
+                    </tr>
+                  ))}
+                  {modulesData?.data?.length === 0 && (
+                    <tr>
+                      <td colSpan={4} className="px-4 py-8 text-center text-gray-500 italic">
+                        No modules defined. Add one above.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 }
