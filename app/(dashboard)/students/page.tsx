@@ -253,7 +253,7 @@ export default function StudentsPage() {
               )}
               
               {filteredStudents.map((student) => {
-                const initials = student.fullName
+                const initials = (student.fullName || "S")
                   .split(" ")
                   .map((n) => n[0])
                   .join("")
@@ -340,12 +340,26 @@ export default function StudentsPage() {
           
           <div className="flex items-center gap-4">
             <div className="flex -space-x-2">
-              {[1, 2, 3, 4].map(i => (
-                <div key={i} className="h-7 w-7 rounded-full border-2 border-white bg-gray-200 animate-pulse" />
-              ))}
-              <div className="h-7 w-7 rounded-full border-2 border-white bg-violet-600 flex items-center justify-center text-[10px] font-bold text-white">
-                +{allStudents.length > 4 ? allStudents.length - 4 : 0}
-              </div>
+              {allStudents.slice(0, 4).map((student) => {
+                const initials = (student.fullName || "S")
+                  .split(" ")
+                  .map((n) => n[0])
+                  .join("")
+                  .toUpperCase()
+                  .slice(0, 2);
+                return (
+                  <Avatar key={student._id} className="h-7 w-7 border-2 border-white shadow-sm">
+                    <AvatarFallback className="bg-gradient-to-br from-violet-500 to-violet-700 text-white font-bold text-[10px] shadow-inner">
+                      {initials}
+                    </AvatarFallback>
+                  </Avatar>
+                );
+              })}
+              {allStudents.length > 4 && (
+                <div className="h-7 w-7 z-10 rounded-full border-2 border-white bg-violet-600 flex items-center justify-center text-[10px] font-bold text-white shadow-sm">
+                  +{allStudents.length - 4}
+                </div>
+              )}
             </div>
           </div>
         </div>
