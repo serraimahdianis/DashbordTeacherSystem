@@ -99,6 +99,7 @@ export interface Session {
   status: SessionStatus;
   isReplacement: boolean;
   reasonForReplacement?: string;
+  room?: string;
 }
 
 export type AttendanceStatus = "present" | "late" | "absent";
@@ -146,6 +147,7 @@ export interface CreateSessionPayload {
   status?: SessionStatus;
   isReplacement?: boolean;
   reasonForReplacement?: string;
+  room?: string;
 }
 
 export interface ScanPayload {

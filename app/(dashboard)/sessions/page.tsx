@@ -73,6 +73,7 @@ export default function SessionsPage() {
     group: "",
     speciality: "",
     reasonForReplacement: "",
+    room: "",
   });
 
   const handleSave = async (e: React.FormEvent) => {
@@ -94,10 +95,11 @@ export default function SessionsPage() {
         status: "planned",
         isReplacement: true,
         reasonForReplacement: form.reasonForReplacement || "Extra session",
+        room: form.room || undefined,
       });
       await mutate(swrKey);
       setSheetOpen(false);
-      setForm({ moduleId: "", date: "", startTime: "", endTime: "", type: "", year: "", group: "", speciality: "", reasonForReplacement: "" });
+      setForm({ moduleId: "", date: "", startTime: "", endTime: "", type: "", year: "", group: "", speciality: "", reasonForReplacement: "", room: "" });
     } catch (err: unknown) {
       const msg = (err as { response?: { data?: { message?: string } } })?.response?.data?.message;
       setFormError(typeof msg === "string" ? msg : "Failed to create replacement session.");
@@ -360,6 +362,17 @@ export default function SessionsPage() {
               </div>
 
               <div className="space-y-2">
+                <Label className="text-sm font-semibold text-gray-700">{t.sessions.room} <span className="text-red-500">*</span></Label>
+                <Input
+                  required
+                  placeholder="e.g. Room A101"
+                  className="h-10 border-gray-200"
+                  value={form.room}
+                  onChange={(e) => setForm((p) => ({ ...p, room: e.target.value }))}
+                />
+              </div>
+
+              <div className="space-y-2">
                 <Label className="text-sm font-semibold text-gray-700">{t.sessions.date} <span className="text-red-500">*</span></Label>
                 <Input
                   type="date"
@@ -501,6 +514,7 @@ export default function SessionsPage() {
                     <TableHead className="font-bold text-gray-900">Year</TableHead>
                     <TableHead className="font-bold text-gray-900">{t.sessions.group}</TableHead>
                     <TableHead className="font-bold text-gray-900">Speciality</TableHead>
+                    <TableHead className="font-bold text-gray-900">{t.sessions.room}</TableHead>
                     <TableHead className="font-bold text-gray-900">{t.sessions.date}</TableHead>
                     <TableHead className="font-bold text-gray-900">{t.sessions.time}</TableHead>
                     <TableHead className="font-bold text-gray-900">{t.sessions.status}</TableHead>
@@ -536,6 +550,9 @@ export default function SessionsPage() {
                       </TableCell>
                       <TableCell className="text-gray-600 text-sm">
                         {session.speciality || "—"}
+                      </TableCell>
+                      <TableCell className="text-gray-600 text-sm font-medium">
+                        {session.room || (session.scheduleId as any)?.room || "—"}
                       </TableCell>
                       <TableCell className="text-gray-600">
                         <div className="flex items-center gap-2">
