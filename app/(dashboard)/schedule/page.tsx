@@ -83,9 +83,9 @@ export default function SchedulePage() {
         teacherId: user.id,
         moduleId: form.moduleId,
         type: form.type as "cours" | "td" | "tp",
-        year: form.year as "L1" | "L2" | "L3" | "M1" | "M2",
-        group: form.group || null,
-        speciality: form.speciality || null,
+        year: form.year,
+        group: form.group || undefined,
+        speciality: form.speciality || undefined,
         dayOfWeek: form.dayOfWeek as "Sunday" | "Monday" | "Tuesday" | "Wednesday" | "Thursday" | "Friday" | "Saturday",
         startTime: form.startTime,
         endTime: form.endTime,
@@ -213,22 +213,20 @@ export default function SchedulePage() {
                 </select>
               </div>
 
-              {(form.type === "td" || form.type === "tp") && (
-                <div className="space-y-2">
-                  <Label className="text-sm font-semibold text-gray-700">{t.schedule.groupField} <span className="text-red-500">*</span></Label>
-                  <select
-                    required
-                    className="w-full h-11 rounded-2xl border-0 bg-gray-50/50 px-4 py-2 text-sm text-gray-700 outline-none focus:ring-2 focus:ring-violet-500 transition-all"
-                    value={form.group}
-                    onChange={(e) => setForm((p) => ({ ...p, group: e.target.value }))}
-                  >
-                    <option value="">Select group</option>
-                    {groups?.map((g) => (
-                      <option key={g._id} value={g.name}>{g.name}</option>
-                    ))}
-                  </select>
-                </div>
-              )}
+              <div className="space-y-2">
+                <Label className="text-sm font-semibold text-gray-700">{t.schedule.groupField} {form.type !== "cours" && <span className="text-red-500">*</span>}</Label>
+                <select
+                  required={form.type !== "cours"}
+                  className="w-full h-11 rounded-2xl border-0 bg-gray-50/50 px-4 py-2 text-sm text-gray-700 outline-none focus:ring-2 focus:ring-violet-500 transition-all"
+                  value={form.group}
+                  onChange={(e) => setForm((p) => ({ ...p, group: e.target.value }))}
+                >
+                  <option value="">{form.type === "cours" ? "All Groups (Whole Year)" : "Select group"}</option>
+                  {groups?.map((g) => (
+                    <option key={g._id} value={g.name}>{g.name}</option>
+                  ))}
+                </select>
+              </div>
 
               <div className="space-y-2">
                 <Label className="text-sm font-semibold text-gray-700">Speciality <span className="text-gray-400 text-xs font-normal">(optional — leave blank for all)</span></Label>
