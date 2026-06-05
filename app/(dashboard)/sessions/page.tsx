@@ -89,8 +89,8 @@ export default function SessionsPage() {
         endTime: form.endTime,
         type: form.type as "cours" | "td" | "tp",
         year: form.year || undefined,
-        group: form.group || null,
-        speciality: form.speciality || null,
+        group: form.group || undefined,
+        speciality: form.speciality || undefined,
         status: "planned",
         isReplacement: true,
         reasonForReplacement: form.reasonForReplacement || "Extra session",
@@ -329,22 +329,20 @@ export default function SessionsPage() {
                 </select>
               </div>
 
-              {(form.type === "td" || form.type === "tp") && (
-                <div className="space-y-2">
-                  <Label className="text-sm font-semibold text-gray-700">{t.sessions.group} <span className="text-red-500">*</span></Label>
-                  <select
-                    required
-                    className="w-full h-11 rounded-2xl border-0 bg-gray-50/50 px-4 py-2 text-sm text-gray-700 outline-none focus:ring-2 focus:ring-violet-500 transition-all"
-                    value={form.group}
-                    onChange={(e) => setForm((p) => ({ ...p, group: e.target.value }))}
-                  >
-                    <option value="">Select group</option>
-                    {groups?.map((g) => (
-                      <option key={g._id} value={g.name}>{g.name}</option>
-                    ))}
-                  </select>
-                </div>
-              )}
+              <div className="space-y-2">
+                <Label className="text-sm font-semibold text-gray-700">{t.sessions.group} {form.type !== "cours" && <span className="text-red-500">*</span>}</Label>
+                <select
+                  required={form.type !== "cours"}
+                  className="w-full h-11 rounded-2xl border-0 bg-gray-50/50 px-4 py-2 text-sm text-gray-700 outline-none focus:ring-2 focus:ring-violet-500 transition-all"
+                  value={form.group}
+                  onChange={(e) => setForm((p) => ({ ...p, group: e.target.value }))}
+                >
+                  <option value="">{form.type === "cours" ? "All Groups (Whole Year)" : "Select group"}</option>
+                  {groups?.map((g) => (
+                    <option key={g._id} value={g.name}>{g.name}</option>
+                  ))}
+                </select>
+              </div>
 
               <div className="space-y-2">
                 <Label className="text-sm font-semibold text-gray-700">Speciality <span className="text-gray-400 text-xs font-normal">(optional — leave blank for all)</span></Label>
@@ -499,7 +497,9 @@ export default function SessionsPage() {
                   <TableRow className="bg-gray-50/50 hover:bg-gray-50/50">
                     <TableHead className="font-bold text-gray-900 py-4">{t.sessions.module}</TableHead>
                     <TableHead className="font-bold text-gray-900">{t.sessions.type}</TableHead>
+                    <TableHead className="font-bold text-gray-900">Year</TableHead>
                     <TableHead className="font-bold text-gray-900">{t.sessions.group}</TableHead>
+                    <TableHead className="font-bold text-gray-900">Speciality</TableHead>
                     <TableHead className="font-bold text-gray-900">{t.sessions.date}</TableHead>
                     <TableHead className="font-bold text-gray-900">{t.sessions.time}</TableHead>
                     <TableHead className="font-bold text-gray-900">{t.sessions.status}</TableHead>
@@ -527,8 +527,14 @@ export default function SessionsPage() {
                           {session.type.toUpperCase()}
                         </Badge>
                       </TableCell>
+                      <TableCell className="text-gray-600 font-medium">
+                        {session.year || "—"}
+                      </TableCell>
                       <TableCell className="text-gray-600">
                         {session.group ? `${t.sessions.group} ${session.group}` : "—"}
+                      </TableCell>
+                      <TableCell className="text-gray-600 text-sm">
+                        {session.speciality || "—"}
                       </TableCell>
                       <TableCell className="text-gray-600">
                         <div className="flex items-center gap-2">
