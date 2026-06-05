@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { CalendarDays, Play, Eye, CheckCircle2, ChevronLeft, ChevronRight, Plus, Loader2, RotateCcw, Ban, Clock } from "lucide-react";
 import { formatDate } from "@/lib/utils";
-import { useApi, sessionsApi, modulesApi } from "@/lib/api";
+import { useApi, sessionsApi } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { useTranslation } from "@/lib/locale-context";
 import type { Session, Module, Schedule, Group, Speciality, Year } from "@/types/api";
@@ -132,6 +132,7 @@ export default function SessionsPage() {
             teacherId: "",
             moduleId: typeof sch.moduleId === "object" ? sch.moduleId._id : sch.moduleId,
             type: sch.type,
+            year: sch.year,
             group: sch.group,
             speciality: sch.speciality,
             date: today.toISOString(),

@@ -24,7 +24,7 @@ export default function AdminStudentsPage() {
   const swrKey = `/students?page=${page}&limit=${limit}`;
   const { data, isLoading } = useApi<PaginatedResponse<Student>>(swrKey);
 
-  const students = data?.data ?? [];
+  const students = useMemo(() => data?.data ?? [], [data?.data]);
   const totalPages = data?.totalPages ?? 1;
   const total = data?.total ?? 0;
 
