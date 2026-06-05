@@ -26,11 +26,12 @@ export default function DashboardPage() {
   const { mutate } = useSWRConfig();
   const [startingId, setStartingId] = useState<string | null>(null);
 
+  const isAdm = user?.role === "admin";
   const { data: sessionsData, isLoading: sessionsLoading } = useApi<{ data: Session[] }>(
-    user?.id ? `/sessions/teacher/${user.id}` : null
+    isAdm ? "/sessions" : user?.id ? `/sessions/teacher/${user.id}` : null
   );
   const { data: schedulesData, isLoading: schedulesLoading } = useApi<{ data: Schedule[] }>(
-    user?.id ? `/schedules/teacher/${user.id}` : null
+    isAdm ? "/schedules" : user?.id ? `/schedules/teacher/${user.id}` : null
   );
 
   const sessions = sessionsData?.data;

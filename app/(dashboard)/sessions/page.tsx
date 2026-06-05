@@ -30,11 +30,11 @@ export default function SessionsPage() {
   const { t } = useTranslation();
   const router = useRouter();
   const { mutate } = useSWRConfig();
-  const swrKey = user?.id ? `/sessions/teacher/${user.id}` : null;
+  const swrKey = user?.role === "admin" ? "/sessions" : user?.id ? `/sessions/teacher/${user.id}` : null;
   const { data: sessionsData, isLoading: loadingSessions } = useApi<{ data: Session[] }>(swrKey);
-  const { data: modulesData } = useApi<{ data: Module[] }>(user?.id ? `/modules/teacher/${user.id}` : null);
+  const { data: modulesData } = useApi<{ data: Module[] }>(user?.role === "admin" ? "/modules" : user?.id ? `/modules/teacher/${user.id}` : null);
   const { data: schedulesData, isLoading: loadingSchedules } = useApi<{ data: Schedule[] }>(
-    user?.id ? `/schedules/teacher/${user.id}` : null
+    user?.role === "admin" ? "/schedules" : user?.id ? `/schedules/teacher/${user.id}` : null
   );
   const { data: groups } = useApi<Group[]>("/metadata/groups");
   const { data: specialities } = useApi<Speciality[]>("/metadata/specialities");
