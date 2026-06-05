@@ -20,8 +20,6 @@ export default function SettingsPage() {
   const [newSpeciality, setNewSpeciality] = useState("");
   const [newYear, setNewYear] = useState("");
   const [newModuleName, setNewModuleName] = useState("");
-  const [newModuleYear, setNewModuleYear] = useState("");
-  const [newModuleTeacherId, setNewModuleTeacherId] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleAddGroup = async () => {
@@ -103,20 +101,13 @@ export default function SettingsPage() {
   };
 
   const handleAddModule = async () => {
-    if (!newModuleName.trim() || !newModuleYear || !newModuleTeacherId) {
-      toast.error("Please fill in all module fields");
-      return;
-    }
+    if (!newModuleName.trim()) return;
     try {
       setIsSubmitting(true);
       await modulesApi.create({
         name: newModuleName.trim(),
-        year: newModuleYear as any,
-        teacherId: newModuleTeacherId,
-      });
+      } as any);
       setNewModuleName("");
-      setNewModuleYear("");
-      setNewModuleTeacherId("");
       mutateModules();
       toast.success("Module added successfully");
     } catch (error) {
@@ -144,7 +135,7 @@ export default function SettingsPage() {
         <p className="text-gray-500">Manage global groups and specialities.</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         {/* Groups */}
         <Card>
           <CardHeader>
@@ -255,104 +246,44 @@ export default function SettingsPage() {
             )}
           </CardContent>
         </Card>
-      </div>
 
-      {/* Modules Management */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Modules</CardTitle>
-          <CardDescription>Manage academic modules and assign them to teachers and academic years.</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
-            <div className="space-y-2">
-              <label className="text-sm font-semibold text-gray-700">Module Name</label>
+        {/* Modules */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Modules</CardTitle>
+            <CardDescription>Manage academic modules (e.g. Mathematics)</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="flex gap-2">
               <Input
-                placeholder="e.g. Artificial Intelligence"
+                placeholder="New Module Name"
                 value={newModuleName}
                 onChange={(e) => setNewModuleName(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleAddModule()}
               />
+              <Button onClick={handleAddModule} disabled={isSubmitting || !newModuleName.trim()}>
+                <Plus className="h-4 w-4 mr-2" />
+                Add
+              </Button>
             </div>
-            <div className="space-y-2 flex flex-col">
-              <label className="text-sm font-semibold text-gray-700 mb-1">Academic Year</label>
-              <select
-                className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                value={newModuleYear}
-                onChange={(e) => setNewModuleYear(e.target.value)}
-              >
-                <option value="">Select Year</option>
-                {years?.map((y) => (
-                  <option key={y._id} value={y.name}>{y.name}</option>
+            {loadingModules ? (
+              <p className="text-sm text-gray-500">Loading...</p>
+            ) : (
+              <ul className="space-y-2 max-h-[400px] overflow-y-auto">
+                {modulesData?.data?.map((module: any) => (
+                  <li key={module._id} className="flex items-center justify-between p-3 bg-gray-50 rounded-md border border-gray-100">
+                    <span className="font-medium text-sm text-gray-700">{module.name}</span>
+                    <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50" onClick={() => handleDeleteModule(module._id)}>
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </li>
                 ))}
-              </select>
-            </div>
-            <div className="space-y-2 flex flex-col">
-              <label className="text-sm font-semibold text-gray-700 mb-1">Assigned Teacher</label>
-              <select
-                className="w-full h-10 rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                value={newModuleTeacherId}
-                onChange={(e) => setNewModuleTeacherId(e.target.value)}
-              >
-                <option value="">Select Teacher</option>
-                {teachersData?.data?.map((t: any) => (
-                  <option key={t._id} value={t._id}>{t.fullName} ({t.email})</option>
-                ))}
-              </select>
-            </div>
-            <Button onClick={handleAddModule} disabled={isSubmitting || !newModuleName.trim() || !newModuleYear || !newModuleTeacherId} className="h-10">
-              <Plus className="h-4 w-4 mr-2" />
-              Add Module
-            </Button>
-          </div>
-
-          {loadingModules ? (
-            <p className="text-sm text-gray-500">Loading modules...</p>
-          ) : (
-            <div className="border rounded-lg overflow-hidden">
-              <table className="w-full text-sm text-left">
-                <thead className="bg-gray-50 text-gray-700 font-semibold border-b">
-                  <tr>
-                    <th className="px-4 py-3">Module Name</th>
-                    <th className="px-4 py-3">Year</th>
-                    <th className="px-4 py-3">Assigned Teacher</th>
-                    <th className="px-4 py-3 text-right">Action</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y">
-                  {modulesData?.data?.map((module: any) => (
-                    <tr key={module._id} className="hover:bg-gray-50/50">
-                      <td className="px-4 py-3 font-medium text-gray-900">{module.name}</td>
-                      <td className="px-4 py-3 text-gray-600">{module.year}</td>
-                      <td className="px-4 py-3 text-gray-600">
-                        {typeof module.teacherId === "object" && module.teacherId !== null
-                          ? module.teacherId.fullName
-                          : teachersData?.data?.find((t: any) => t._id === module.teacherId)?.fullName || "Unknown Teacher"}
-                      </td>
-                      <td className="px-4 py-3 text-right">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-8 w-8 p-0 text-red-500 hover:text-red-700 hover:bg-red-50"
-                          onClick={() => handleDeleteModule(module._id)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </td>
-                    </tr>
-                  ))}
-                  {modulesData?.data?.length === 0 && (
-                    <tr>
-                      <td colSpan={4} className="px-4 py-8 text-center text-gray-500 italic">
-                        No modules defined. Add one above.
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                {modulesData?.data?.length === 0 && <p className="text-sm text-gray-500 italic">No modules defined.</p>}
+              </ul>
+            )}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }
