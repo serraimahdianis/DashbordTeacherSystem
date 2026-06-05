@@ -10,7 +10,7 @@ import { Search, X, Filter, Users, GraduationCap, School } from "lucide-react";
 import { useApi } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { useTranslation } from "@/lib/locale-context";
-import type { Student, Schedule } from "@/types/api";
+import type { Student } from "@/types/api";
 
 export default function StudentsPage() {
   const { user } = useAuth();
@@ -24,18 +24,7 @@ export default function StudentsPage() {
   const [yearFilter, setYearFilter] = useState("");
   const [groupFilter, setGroupFilter] = useState("");
 
-  const allStudents = useMemo(() => {
-    const list = students ?? [];
-    if (user?.role === "teacher") {
-      return list.filter((student) => {
-        const yearOk = !user.years || user.years.length === 0 || user.years.includes(student.year);
-        const groupOk = !user.groups || user.groups.length === 0 || user.groups.some(g => g.trim() === (student.group?.toString() ?? '').trim());
-        const specialityOk = !user.specialities || user.specialities.length === 0 || user.specialities.some(s => s.trim() === (student.speciality ?? '').trim());
-        return yearOk && groupOk && specialityOk;
-      });
-    }
-    return list;
-  }, [students, user]);
+  const allStudents = useMemo(() => students ?? [], [students]);
 
   const uniqueYears = useMemo(() => [...new Set(allStudents.map((s) => s.year))].sort(), [allStudents]);
   const uniqueGroups = useMemo(() => [...new Set(allStudents.map((s) => (s.group?.toString() ?? '').trim()))].filter(Boolean).sort(), [allStudents]);
@@ -264,7 +253,6 @@ export default function StudentsPage() {
               )}
               
               {filteredStudents.map((student) => {
-                const studentGroup = student.group?.toString().trim();
                 const initials = student.fullName
                   .split(" ")
                   .map((n) => n[0])
@@ -272,11 +260,7 @@ export default function StudentsPage() {
                   .toUpperCase()
                   .slice(0, 2);
                 
-                const isTeached = user?.role === 'teacher' && (
-                  (!user.years || user.years.length === 0 || user.years.includes(student.year)) &&
-                  (!user.groups || user.groups.length === 0 || user.groups.some(g => g.trim() === (student.group?.toString() ?? '').trim())) &&
-                  (!user.specialities || user.specialities.length === 0 || user.specialities.some(s => s.trim() === (student.speciality ?? '').trim()))
-                );
+                const isTeached = user?.role === 'teacher';
 
                 return (
                   <TableRow 
