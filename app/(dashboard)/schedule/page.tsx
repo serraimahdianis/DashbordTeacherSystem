@@ -34,7 +34,7 @@ export default function SchedulePage() {
   const swrKey = user?.role === "admin" ? "/schedules" : user?.id ? `/schedules/teacher/${user.id}` : null;
 
   const { data: schedulesData, isLoading } = useApi<{ data: Schedule[] }>(swrKey);
-  const { data: modulesData } = useApi<{ data: Module[] }>(user?.role === "admin" ? "/modules" : user?.id ? `/modules/teacher/${user.id}` : null);
+  const { data: modulesData } = useApi<{ data: Module[] }>("/modules?limit=1000");
   const { data: groups } = useApi<Group[]>("/metadata/groups");
   const { data: specialities } = useApi<Speciality[]>("/metadata/specialities");
   const { data: years } = useApi<Year[]>("/metadata/years");

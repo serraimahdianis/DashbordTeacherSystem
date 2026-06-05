@@ -101,12 +101,14 @@ export default function SettingsPage() {
   };
 
   const handleAddModule = async () => {
-    if (!newModuleName.trim()) return;
+    if (!newModuleName.trim()) {
+      return;
+    }
     try {
       setIsSubmitting(true);
       await modulesApi.create({
         name: newModuleName.trim(),
-      } as any);
+      });
       setNewModuleName("");
       mutateModules();
       toast.success("Module added successfully");
@@ -135,7 +137,7 @@ export default function SettingsPage() {
         <p className="text-gray-500">Manage global groups and specialities.</p>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
         {/* Groups */}
         <Card>
           <CardHeader>
@@ -246,12 +248,11 @@ export default function SettingsPage() {
             )}
           </CardContent>
         </Card>
-
-        {/* Modules */}
+        {/* Modules Management */}
         <Card>
           <CardHeader>
             <CardTitle>Modules</CardTitle>
-            <CardDescription>Manage academic modules (e.g. Mathematics)</CardDescription>
+            <CardDescription>Manage academic modules (e.g. Web Development)</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex gap-2">
@@ -278,7 +279,7 @@ export default function SettingsPage() {
                     </Button>
                   </li>
                 ))}
-                {modulesData?.data?.length === 0 && <p className="text-sm text-gray-500 italic">No modules defined.</p>}
+                {(!modulesData?.data || modulesData.data.length === 0) && <p className="text-sm text-gray-500 italic">No modules defined.</p>}
               </ul>
             )}
           </CardContent>

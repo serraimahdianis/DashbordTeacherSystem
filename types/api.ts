@@ -60,8 +60,6 @@ export interface Student {
 export interface Module {
   _id: string;
   name: string;
-  teacherId: string;
-  year: string;
 }
 
 export type ScheduleType = "cours" | "td" | "tp";
@@ -116,8 +114,6 @@ export interface AttendanceRecord {
 
 export interface CreateModulePayload {
   name: string;
-  teacherId: string;
-  year: ScheduleYear;
 }
 
 export interface CreateSchedulePayload {

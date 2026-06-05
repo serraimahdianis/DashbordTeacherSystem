@@ -32,7 +32,7 @@ export default function SessionsPage() {
   const { mutate } = useSWRConfig();
   const swrKey = user?.role === "admin" ? "/sessions" : user?.id ? `/sessions/teacher/${user.id}` : null;
   const { data: sessionsData, isLoading: loadingSessions } = useApi<{ data: Session[] }>(swrKey);
-  const { data: modulesData } = useApi<{ data: Module[] }>(user?.role === "admin" ? "/modules" : user?.id ? `/modules/teacher/${user.id}` : null);
+  const { data: modulesData } = useApi<{ data: Module[] }>("/modules?limit=1000");
   const { data: schedulesData, isLoading: loadingSchedules } = useApi<{ data: Schedule[] }>(
     user?.role === "admin" ? "/schedules" : user?.id ? `/schedules/teacher/${user.id}` : null
   );
