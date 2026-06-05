@@ -88,6 +88,7 @@ export default function DashboardPage() {
       type: string;
       status: "pending" | "active" | "closed" | "canceled";
       sessionId?: string;
+      room?: string;
     }> = [];
 
     // Map schedules
@@ -105,6 +106,7 @@ export default function DashboardPage() {
           ? (session.status === "planned" ? "pending" : session.status as "active" | "closed" | "canceled") 
           : "pending",
         sessionId: session?._id,
+        room: session?.room || sch.room,
       });
     });
 
@@ -121,6 +123,7 @@ export default function DashboardPage() {
           type: sess.type,
           status: sess.status === "planned" ? "pending" : sess.status as "active" | "closed" | "canceled",
           sessionId: sess._id,
+          room: sess.room,
         });
       }
     });
@@ -227,6 +230,12 @@ export default function DashboardPage() {
                               </Badge>
                             </div>
                           )}
+                          {item.room && (
+                            <div className="flex items-center gap-1 font-medium">
+                              <span className="text-gray-400">•</span>
+                              <span>{item.room}</span>
+                            </div>
+                          )}
                         </div>
                       </div>
                       <div className="flex flex-col items-end gap-2">
@@ -304,7 +313,7 @@ export default function DashboardPage() {
                         {formatDate(s.date, "EEE, MMM d")}
                       </span>
                       <span className="text-gray-400 text-[11px]">
-                        {s.startTime}
+                        {s.startTime} {s.room ? `• ${s.room}` : (s.scheduleId as unknown as Schedule)?.room ? `• ${(s.scheduleId as unknown as Schedule).room}` : ''}
                       </span>
                     </div>
                   </div>

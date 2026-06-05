@@ -9,10 +9,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription, SheetTrigger } from "@/components/ui/sheet";
 import { CalendarDays, Plus, ChevronLeft, ChevronRight, Loader2, Trash2 } from "lucide-react";
 import { format } from "date-fns";
-import { useApi, modulesApi, schedulesApi } from "@/lib/api";
+import { useApi, schedulesApi } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
 import { useTranslation } from "@/lib/locale-context";
-import type { Schedule, Module, Group, Speciality, Year } from "@/types/api";
+import type { Schedule, Module, Group, Speciality, Year, ScheduleYear, DayOfWeek } from "@/types/api";
 import { useSWRConfig } from "swr";
 
 interface ScheduleFormData {
@@ -83,10 +83,10 @@ export default function SchedulePage() {
         teacherId: user.id,
         moduleId: form.moduleId,
         type: form.type as "cours" | "td" | "tp",
-        year: form.year as any,
+        year: form.year as ScheduleYear,
         group: form.group || null,
         speciality: form.speciality || null,
-        dayOfWeek: form.dayOfWeek as any,
+        dayOfWeek: form.dayOfWeek as DayOfWeek,
         startTime: form.startTime,
         endTime: form.endTime,
         room: form.room,

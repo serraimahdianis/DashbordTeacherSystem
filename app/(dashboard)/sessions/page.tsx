@@ -143,6 +143,7 @@ export default function SessionsPage() {
             status: "planned",
             isReplacement: false,
             isScheduleOnly: true,
+            room: sch.room,
           });
         }
       });
@@ -552,7 +553,7 @@ export default function SessionsPage() {
                         {session.speciality || "—"}
                       </TableCell>
                       <TableCell className="text-gray-600 text-sm font-medium">
-                        {session.room || (session.scheduleId as any)?.room || "—"}
+                        {session.room || (session.scheduleId as unknown as Schedule)?.room || "—"}
                       </TableCell>
                       <TableCell className="text-gray-600">
                         <div className="flex items-center gap-2">
